@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>Stream Edit and Send</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+    <header>
+         <h1>Stream Edit and Send</h1>
+    </header>
+
+    <div class="container">
+        <h2 style="font-size: 21px">Available Streams</h2>
+        <br>
+        <div class="streams-list">
+            {% for source in sources %}
+                <div class="stream-item">
+                    <a href="{% url 'stream_view' source.id %}">
+                        <button class="source-bt">{{ source.name }}</button>
+                    </a>
+                </div>
+            {% empty %}
+                <p>No video sources available. Add some in the admin panel.</p>
+            {% endfor %}
+        </div>
+
+
+
+
+        <div style="margin-top: 20px;">
+            <button class="source-bt refresh-bt" onclick="window.location.reload();" >Refresh Sources</button>
+        </div>
+
+            <button class="source-bt refresh-bt" id="add-resource-btn">Add Resource</button>
+
+<!-- Form modale nascosto inizialmente -->
+<div id="add-resource-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h3>Add New Stream Resource</h3>
+        <br>
+        <form id="add-resource-form">
+            <label for="stream-name">Stream Name:</label>
+            <input type="text" id="stream-name" name="name" required>
+             <br>
+            <label for="stream-url">Stream URL:</label>
+            <input type="text" id="stream-url" name="url" required>
+             <br>
+            <label for="stream-type">Stream Type:</label>
+            <select id="stream-type" name="source_type" required>
+                <option value="rtsp">RTSP</option>
+                <option value="mjpg">MJPG</option>
+            </select>
+
+            <button type="submit" class="control-bt">Add Resource</button>
+        </form>
+
+        <div id="add-resource-feedback" class="feedback-message hidden"></div>
+    </div>
+</div>
+
+    </div>
+
+    <footer>&copy; 2025 Stream App</footer>
+
+<script>
+    const addResourceBtn = document.getElementById('add-resource-btn');
+    const modal = document.getElementById('add-resource-modal');
+    const closeModalBtn = document.querySelector('.close-btn');
+    const form = document.getElementById('add-resource-form');
+    const feedback = document.getElementById('add-resource-feedback');
+
+    // Mostra il form modale
+    addResourceBtn.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        feedback.classList.add('hidden');
+        form.reset();
+    });
+
+    // Chiude il form modale
+    closeModalBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    // Gestisce l'invio del form tramite AJAX
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const name = document.getElementById('stream-name').value.trim();
+        const url = document.getElementById('stream-url').value.trim();
+        const sourceType = document.getElementById('stream-type').value;
+
+        feedback.classList.add('hidden');
+
+        // Validazione lato client
+        if (!name || !url) {
+            feedback.textContent = 'Name and URL are required.';
+            feedback.classList.remove('hidden');
+            feedback.style.color = 'red';
+            return;
+        }
+
+        // Invio tramite AJAX
+        fetch("{% url 'add_video_source' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ name, url, source_type: sourceType })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    feedback.textContent = 'Resource added successfully!';
+                    feedback.style.color = 'green';
+                    feedback.classList.remove('hidden');
+                    setTimeout(() => location.reload(), 1000); // Aggiorna la pagina dopo 1s
+                } else {
+                    feedback.textContent = 'Error: ' + data.error;
+                    feedback.style.color = 'red';
+                    feedback.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                feedback.textContent = 'Unexpected error.';
+                feedback.style.color = 'red';
+                feedback.classList.remove('hidden');
+            });
+    });
+</script>
+
+
+</body>
+</html>

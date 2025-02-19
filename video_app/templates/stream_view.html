@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ source.name }} - Stream Control</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <style>
+        button:disabled {
+            background-color: #ccc;
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Stream Control - {{ source.name }}</h1>
+    </header>
+
+    <div class="container">
+
+        <!-- Sezione Video -->
+        <div id="video-section" class="video-container">
+            <img id="video-stream" src="{% url 'video_feed' source.id %}" alt="Live Stream">
+            <div id="recording-dot" class="recording-dot" style="display:none;"></div>
+            <div id="loading-overlayStream" class="loading-overlay">
+                <div class="spinner"></div>
+                <p>Loading Stream...</p>
+            </div>
+            <div id="error-message" class="error-message" style="display: none;">
+                ⚠️ Stream could not be loaded. Please check the source.
+            </div>
+        </div>
+
+        <!-- Controlli Registrazione -->
+        <div id="controls-section">
+            <button type="button" id="start-recording" class="control-bt">START RECORDING</button>
+            <button type="button" id="stop-recording" class="control-bt"disabled>STOP RECORDING</button>
+        </div>
+
+        <!-- Form per watermark (inizialmente nascosto) -->
+        <form id="watermark-form" style="display:none; position: relative;" method="post" action="{% url 'add_watermark' source.id %}">
+            {% csrf_token %}
+            <label for="watermark_text">Watermark Text:</label>
+            <input type="text" id="watermark_text" name="watermark_text" placeholder="Enter Watermark Text" required>
+
+            <label for="watermark_color">Watermark Color:</label>
+            <input type="color" id="watermark_color" name="watermark_color" value="#ffffff">
+
+            <label for="watermark_size">Font Size:</label>
+            <select id="watermark_size" name="watermark_size">
+                <option value="1.0">Small</option>
+                <option value="1.3" selected>Medium</option>
+                <option value="2.0">Large</option>
+                <option value="2.5">Extra Large</option>
+            </select>
+
+            <button type="submit" id="apply-watermark" class="control-bt">Apply Watermark</button>
+
+            <div id="watermark-loading" class="loading-overlay" style="display:none;">
+                <div class="spinner"></div>
+                <p>Applying watermark...</p>
+            </div>
+        </form>
+
+        <!-- Form per invio video registrato -->
+        <form id="send-form" style="display:none; margin:15px" method="post" action="{% url 'send_recording' source.id %}">
+            {% csrf_token %}
+            <input type="text" id="output_url" name="output_url" placeholder="Enter Destination URL" required>
+            <button type="submit" id="send-recording" class="control-bt">Send Recording</button>
+        </form>
+
+        <a href="{% url 'index' %}">
+            <button type="button" id="home-bt" class="home-bt">Home</button>
+        </a>
+
+    </div>
+
+    <footer>
+        &copy; 2025 Stream App
+    </footer>
+
+    <!-- Script per la gestione delle funzioni -->
+    <script>
+       const startButton = document.getElementById('start-recording');
+const stopButton = document.getElementById('stop-recording');
+const homeButton = document.getElementById('home-bt');
+const recordingDot = document.getElementById('recording-dot');
+
+/**
+ * Funzione per aggiornare visivamente lo stato dei pulsanti
+ * @param {boolean} isRecording - true se la registrazione è in corso, false altrimenti
+ */
+function updateButtonState(isRecording) {
+    if (isRecording) {
+        startButton.disabled = true;
+        stopButton.disabled = false;
+    } else {
+        startButton.disabled = false;
+        stopButton.disabled = true;
+    }
+}
+
+// Impostazione iniziale dei pulsanti all'avvio della pagina
+document.addEventListener("DOMContentLoaded", function () {
+    updateButtonState(false);
+
+    const videoStream = document.getElementById("video-stream");
+    const loadingOverlay = document.getElementById("loading-overlayStream");
+    const errorMessage = document.getElementById("error-message");
+
+    let timeout = setTimeout(() => {
+        loadingOverlay.style.display = "none";
+        errorMessage.style.display = "block";
+        startButton.disabled = true;
+    }, 10000);
+
+    videoStream.onload = function () {
+        clearTimeout(timeout);
+        loadingOverlay.style.display = "none";
+    };
+
+    videoStream.onerror = function () {
+        clearTimeout(timeout);
+        loadingOverlay.style.display = "none";
+        errorMessage.style.display = "block";
+        startButton.disabled = true;
+    };
+});
+
+// START RECORDING
+startButton.addEventListener('click', function () {
+    startButton.disabled = true;
+    stopButton.disabled = true; // Blocca entrambi temporaneamente per sicurezza
+    homeButton.disabled = true;
+
+
+    fetch("{% url 'start_recording' source.id %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                recordingDot.style.display = 'block';
+                updateButtonState(true); // Attiva STOP e disabilita START
+            } else {
+                alert('Error starting recording');
+                updateButtonState(false);
+            }
+        })
+        .catch(error => {
+            alert('Unexpected error starting recording');
+            updateButtonState(false);
+        });
+});
+
+// STOP RECORDING
+stopButton.addEventListener('click', function () {
+    startButton.disabled = true;
+    stopButton.disabled = true;
+    homeButton.disabled = false;
+
+    fetch("{% url 'stop_recording' source.id %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Recording stored correctly at /media/recordings/' + data.filename);
+                recordingDot.style.display = 'none';
+
+                document.getElementById('video-section').style.display = 'none';
+                document.getElementById('controls-section').style.display = 'none';
+                document.getElementById('watermark-form').style.display = 'block';
+                document.getElementById('send-form').style.display = 'block';
+            } else {
+                alert('Error stopping recording');
+                updateButtonState(true);
+            }
+        })
+        .catch(error => {
+            alert('Unexpected error stopping recording');
+            updateButtonState(true);
+        });
+});
+
+
+        document.getElementById('watermark-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const form = this;
+    const loadingOverlay = document.getElementById('watermark-loading');
+    const inputText = document.getElementById('watermark_text');
+    const inputColor = document.getElementById('watermark_color');
+    const inputSize = document.getElementById('watermark_size');
+    const submitButton = document.getElementById('apply-watermark');
+
+    const formData = new FormData(form);
+    loadingOverlay.style.display = 'flex';
+
+    // Disabilita subito i campi e il pulsante
+    inputText.disabled = true;
+    inputColor.disabled = true;
+    inputSize.disabled = true;
+    submitButton.disabled = true;
+
+    fetch(form.action, { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            loadingOverlay.style.display = 'none';
+
+            if (data.success) {
+                alert('Watermark applied successfully!');
+
+                // Blocca definitivamente il form e il pulsante dopo il successo
+                inputText.disabled = true;
+                inputColor.disabled = true;
+                inputSize.disabled = true;
+                submitButton.disabled = true;
+
+                // Effetto visivo di blocco
+                inputText.style.backgroundColor = '#f0f0f0';
+                inputColor.style.backgroundColor = '#f0f0f0';
+                inputSize.style.backgroundColor = '#f0f0f0';
+                submitButton.style.backgroundColor = '#ccc';
+                submitButton.style.color = '#666';
+                submitButton.style.cursor = 'not-allowed';
+                submitButton.style.opacity = '0.6';
+
+            } else {
+                alert('Error applying watermark');
+
+                // Riabilita i campi e il pulsante in caso di errore
+                inputText.disabled = false;
+                inputColor.disabled = false;
+                inputSize.disabled = false;
+                submitButton.disabled = false;
+            }
+        })
+        .catch(error => {
+            loadingOverlay.style.display = 'none';
+            alert('Unexpected error applying watermark');
+
+            // Riabilita i campi e il pulsante in caso di errore
+            inputText.disabled = false;
+            inputColor.disabled = false;
+            inputSize.disabled = false;
+            submitButton.disabled = false;
+        });
+});
+
+
+        document.getElementById('send-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const form = this;
+    const formData = new FormData(form);
+    const sendButton = document.getElementById('send-recording');
+    const outputUrlInput = document.getElementById('output_url');
+
+    // Validazione URL con regex semplice
+    const urlPattern = /^(http|https):\/\/[^ "]+$/;
+    if (!urlPattern.test(outputUrlInput.value.trim())) {
+        alert('Please enter a valid URL starting with http:// or https://');
+        return; // Interrompe l'invio se l'URL non è valido
+    }
+
+    // Creiamo il loader dinamico (sopra il form)
+    let loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'loading-overlay';
+    loadingOverlay.innerHTML = `<div class="spinner"></div><p>Uploading recording...</p>`;
+    form.appendChild(loadingOverlay);
+
+    // Disabilita il pulsante per evitare doppi invii
+    sendButton.disabled = true;
+    outputUrlInput.disabled = true;
+
+    fetch(form.action, { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            form.removeChild(loadingOverlay); // Rimuove il caricamento
+
+            if (data.success) {
+                alert('Recording uploaded correctly!');
+                window.location.href = '/';  // Torna alla home dopo il successo
+            } else {
+                alert('Error sending recording: ' + (data.error || 'Unknown error'));
+                sendButton.disabled = false; // Riabilita il pulsante in caso di errore
+                outputUrlInput.disabled = false;
+            }
+        })
+        .catch(error => {
+            form.removeChild(loadingOverlay);
+            alert('Unexpected error sending recording');
+            sendButton.disabled = false; // Riabilita il pulsante
+            outputUrlInput.disabled = false;
+        });
+});
+
+    </script>
+</body>
+</html>
+
