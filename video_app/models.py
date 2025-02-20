@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 
 class VideoSource(models.Model):
-    #user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255)
     url = models.URLField()
     source_type = models.CharField(
@@ -13,7 +13,7 @@ class VideoSource(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.user.username if self.user else 'No User'})"
 
 
 class Recording(models.Model):

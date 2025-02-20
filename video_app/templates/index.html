@@ -9,63 +9,79 @@
     <link rel="stylesheet" href="{% static 'style.css' %}">
 </head>
 <body>
-    <header>
-         <h1>Stream Edit and Send</h1>
-    </header>
+<header>
 
-    <div class="container">
-        <h2 style="font-size: 21px">Available Streams</h2>
-        <br>
-        <div class="streams-list">
-            {% for source in sources %}
-                <div class="stream-item">
-                    <a href="{% url 'stream_view' source.id %}">
-                        <button class="source-bt">{{ source.name }}</button>
-                    </a>
-                </div>
-            {% empty %}
-                <p>No video sources available. Add some in the admin panel.</p>
-            {% endfor %}
-        </div>
-
-
-
-
-        <div style="margin-top: 20px;">
-            <button class="source-bt refresh-bt" onclick="window.location.reload();" >Refresh Sources</button>
-        </div>
-
-            <button class="source-bt refresh-bt" id="add-resource-btn">Add Resource</button>
-
-<!-- Form modale nascosto inizialmente -->
-<div id="add-resource-modal" class="modal hidden">
-    <div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h3>Add New Stream Resource</h3>
-        <br>
-        <form id="add-resource-form">
-            <label for="stream-name">Stream Name:</label>
-            <input type="text" id="stream-name" name="name" required>
-             <br>
-            <label for="stream-url">Stream URL:</label>
-            <input type="text" id="stream-url" name="url" required>
-             <br>
-            <label for="stream-type">Stream Type:</label>
-            <select id="stream-type" name="source_type" required>
-                <option value="rtsp">RTSP</option>
-                <option value="mjpg">MJPG</option>
-            </select>
-
-            <button type="submit" class="control-bt">Add Resource</button>
-        </form>
-
-        <div id="add-resource-feedback" class="feedback-message hidden"></div>
+    <h1>Stream Edit and Send</h1>
+    <div class="user-auth-section">
+        {% if user.is_authenticated %}
+            <span>Welcome, {{ user.username }}!</span>
+            <a href="{% url 'logout' %}" class="auth-bt">Logout</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="auth-bt">Login</a>
+            <a href="{% url 'signup' %}" class="auth-bt">Sign Up</a>
+        {% endif %}
     </div>
+</header>
+
+<div class="container">
+    <h2 style="font-size: 21px">Available Streams</h2>
+    <br>
+    <div class="streams-list">
+        {% for source in sources %}
+            <div class="stream-item">
+                <a href="{% url 'stream_view' source.id %}">
+                    <button class="source-bt">{{ source.name }}</button>
+                </a>
+            </div>
+        {% empty %}
+            <p>No video sources available. Add some with the proper bottom.</p>
+        {% endfor %}
+    </div>
+
+
+    <div style="margin-top: 20px;">
+        <button class="source-bt refresh-bt" onclick="window.location.reload();">Refresh Sources</button>
+    </div>
+
+    <button class="source-bt refresh-bt" id="add-resource-btn">Add Resource</button>
+
+    <!-- Form modale nascosto inizialmente -->
+    <!-- Form modale nascosto inizialmente -->
+    <div id="add-resource-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Add New Stream Resource</h3>
+            <br>
+            <form id="add-resource-form">
+                <label for="stream-name">Stream Name:</label>
+                <input type="text" id="stream-name" name="name" required>
+                <br>
+                <label for="stream-url">Stream URL:</label>
+                <input type="url" id="stream-url" name="url" required>
+                <br>
+                <label for="stream-type">Stream Type:</label>
+                <select id="stream-type" name="source_type" required>
+                    <option value="rtsp">RTSP</option>
+                    <option value="mjpg">MJPG</option>
+                </select>
+
+                <button type="submit" class="control-bt">Add</button>
+            </form>
+
+            <div id="add-resource-feedback" class="feedback-message hidden"></div>
+
+            <!-- Spinner di caricamento -->
+            <div id="add-resource-loading" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <p>Checking stream...</p>
+            </div>
+        </div>
+    </div>
+
+
 </div>
 
-    </div>
-
-    <footer>&copy; 2025 Stream App</footer>
+<footer>&copy; 2025 Stream App</footer>
 
 <script>
     const addResourceBtn = document.getElementById('add-resource-btn');
@@ -73,11 +89,13 @@
     const closeModalBtn = document.querySelector('.close-btn');
     const form = document.getElementById('add-resource-form');
     const feedback = document.getElementById('add-resource-feedback');
+    const loadingOverlay = document.getElementById('add-resource-loading');
 
     // Mostra il form modale
     addResourceBtn.addEventListener('click', () => {
         modal.classList.remove('hidden');
         feedback.classList.add('hidden');
+        loadingOverlay.classList.add('hidden');
         form.reset();
     });
 
@@ -96,7 +114,6 @@
 
         feedback.classList.add('hidden');
 
-        // Validazione lato client
         if (!name || !url) {
             feedback.textContent = 'Name and URL are required.';
             feedback.classList.remove('hidden');
@@ -104,22 +121,27 @@
             return;
         }
 
+        // Mostra il caricamento
+        loadingOverlay.classList.remove('hidden');
+
         // Invio tramite AJAX
-        fetch("{% url 'add_video_source' %}", {
+        fetch("{% url 'add_resource' %}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: JSON.stringify({ name, url, source_type: sourceType })
+            body: JSON.stringify({name, url, source_type: sourceType})
         })
             .then(response => response.json())
             .then(data => {
+                loadingOverlay.classList.add('hidden');
+
                 if (data.success) {
                     feedback.textContent = 'Resource added successfully!';
                     feedback.style.color = 'green';
                     feedback.classList.remove('hidden');
-                    setTimeout(() => location.reload(), 1000); // Aggiorna la pagina dopo 1s
+                    setTimeout(() => location.reload(), 1000);
                 } else {
                     feedback.textContent = 'Error: ' + data.error;
                     feedback.style.color = 'red';
@@ -127,11 +149,13 @@
                 }
             })
             .catch(error => {
+                loadingOverlay.classList.add('hidden');
                 feedback.textContent = 'Unexpected error.';
                 feedback.style.color = 'red';
                 feedback.classList.remove('hidden');
             });
     });
+
 </script>
 
 

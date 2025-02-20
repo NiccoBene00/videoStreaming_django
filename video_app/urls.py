@@ -19,11 +19,14 @@ from . import views
 
 urlpatterns = [
     path('', views.index, name='index'),  # Home Page con lista degli stream
+    path('signup/', views.signup_view, name='signup'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('add_resource/', views.add_resource_view, name='add_resource'),
     path('stream/<int:source_id>/', views.stream_view, name='stream_view'),  # Pagina dello stream live
     path('stream/<int:source_id>/start/', views.start_recording_view, name='start_recording'),
     path('stream/<int:source_id>/stop/', views.stop_recording_view, name='stop_recording'),
     path('stream/<int:source_id>/add_watermark/', views.add_watermark_view, name='add_watermark'),
     path('stream/<int:source_id>/send_recording/', views.send_recording_view, name='send_recording'),
     path('video_feed/<int:source_id>/', views.video_feed, name='video_feed'),  # Endpoint per lo streaming MJPEG
-    path('add_video_source/', views.add_video_source, name='add_video_source'),
 ]

@@ -1,4 +1,5 @@
-from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import VideoSource
@@ -6,12 +7,61 @@ from .streaming import start_recording, stop_recording, add_watermark_and_save, 
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 import json
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+import json
+import requests
+import cv2
+from django.http import JsonResponse
 
+
+def signup_view(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Registration successful. You can now login.')
+            return redirect('login')
+        else:
+            messages.error(request, 'Registration failed. Please check the errors below.')
+    else:
+        form = UserCreationForm()
+
+    return render(request, 'signup.html', {'form': form})
+
+
+def login_view(request):
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            return redirect('index')
+    else:
+        form = AuthenticationForm()
+
+    return render(request, 'login.html', {'form': form})
+
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, 'Logged out successfully.')
+    return redirect('login')
+
+
+@login_required
 def index(request):
-    """Home Page - Mostra la lista degli stream"""
-    sources = VideoSource.objects.all()
+    sources = VideoSource.objects.filter(user=request.user)
     return render(request, 'index.html', {'sources': sources})
 
+"""
+def index(request):
+
+    sources = VideoSource.objects.all()
+    return render(request, 'index.html', {'sources': sources})
+"""
 
 def stream_view(request, source_id):
     """Pagina dello stream e dei controlli"""
@@ -62,8 +112,6 @@ def stop_recording_view(request, source_id):
     return JsonResponse({'success': False})
 
 
-
-
 @csrf_exempt
 def add_watermark_view(request, source_id):
     """Applica il watermark al video registrato"""
@@ -101,7 +149,7 @@ def send_recording_view(request, source_id):
 
     return JsonResponse({'success': False, 'error': 'Metodo non consentito'})
 
-
+"""
 @csrf_exempt
 def add_video_source(request):
     if request.method == 'POST':
@@ -131,5 +179,73 @@ def add_video_source(request):
 
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+"""
+
+def validate_rtsp_stream(url):
+    """Verifica se l'URL RTSP è valido aprendo il flusso con OpenCV."""
+    cap = cv2.VideoCapture(url)
+    if cap.isOpened():
+        cap.release()
+        return True
+    cap.release()
+    return False
+
+
+def validate_mjpg_stream(url):
+    """Verifica se l'URL MJPG è valido controllando la risposta HTTP."""
+    try:
+        response = requests.get(url, stream=True, timeout=5)
+        content_type = response.headers.get('Content-Type', '')
+        if response.status_code == 200 and 'multipart/x-mixed-replace' in content_type:
+            return True
+    except requests.RequestException:
+        return False
+    return False
+
+def add_resource_view(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            name = data.get('name')
+            url = data.get('url')
+            source_type = data.get('source_type')
+
+            if not name or not name.strip():
+                return JsonResponse({'success': False, 'error': 'Name cannot be empty'})
+
+            if not url.startswith('http'):
+                return JsonResponse({'success': False, 'error': 'Invalid URL'})
+
+            # Controllo se il nome o l'URL esiste già per l'utente corrente
+            if VideoSource.objects.filter(user=request.user, name=name).exists():
+                return JsonResponse({'success': False, 'error': 'A resource with this name already exists'})
+
+            if VideoSource.objects.filter(user=request.user, url=url).exists():
+                return JsonResponse({'success': False, 'error': 'A resource with this URL already exists'})
+
+            # Controlli specifici in base al tipo di stream
+            if source_type == 'rtsp':
+                if not validate_rtsp_stream(url):
+                    return JsonResponse({'success': False, 'error': 'Invalid RTSP stream URL'})
+
+            elif source_type == 'mjpg':
+                if not validate_mjpg_stream(url):
+                    return JsonResponse({'success': False, 'error': 'Invalid MJPG stream URL'})
+
+            # Inserimento nel database se i controlli sono andati bene
+            VideoSource.objects.create(
+                user=request.user,
+                name=name,
+                url=url,
+                source_type=source_type
+            )
+
+            return JsonResponse({'success': True})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
 
     return JsonResponse({'success': False, 'error': 'Invalid request'})
