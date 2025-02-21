@@ -163,9 +163,6 @@ def add_resource_view(request):
             if not name or not name.strip():
                 return JsonResponse({'success': False, 'error': 'Name cannot be empty'})
 
-            if not url.startswith('http'):
-                return JsonResponse({'success': False, 'error': 'Invalid URL'})
-
             if VideoSource.objects.filter(user=request.user, name=name).exists():
                 return JsonResponse({'success': False, 'error': 'A resource with this name already exists'})
 
