@@ -30,7 +30,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Percorso della directory in cui 
 # - Questa configurazione consente di salvare e recuperare le registrazioni nella cartella `media/recordings`.
 
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -41,7 +40,6 @@ SECRET_KEY = 'django-insecure-s%=!r-g9-28g+o(0%72gqhrx4y^o-7l4n+)&0%*j^g5018llv!
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -87,7 +85,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'video_streaming.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
@@ -97,7 +94,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -117,7 +113,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -129,10 +124,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
-
 
 
 # Default primary key field type

@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 from .models import VideoSource, Recording
 
-recording_processes = {}  # Dizionario per tenere traccia dei thread attivi
+recording_processes = {}  # Dictionary to keeping track active threads
 
 
 def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
@@ -16,7 +16,7 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     if not cap.isOpened() or not out.isOpened():
-        print(f"Errore: impossibile avviare registrazione per {source_url}")
+        print(f"Error: impossible starting recording for {source_url}")
         return
 
     frame_count = 0
@@ -24,20 +24,20 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
     while recording_processes.get(source_id):
         ret, frame = cap.read()
         if not ret:
-            print(f"Errore: frame non disponibile per {source_url}")
+            print(f"Error: frame not available for {source_url}")
             break
 
         out.write(frame)
         frame_count += 1
 
-        # Solo per MJPG -> aggiungi delay artificiale
+        # Only for mjpg -> add artificial delay
         if source_type == 'mjpg':
             time.sleep(1 / fps)
 
     cap.release()
     out.release()
 
-    print(f"Registrazione terminata per {source_url} - Frames acquisiti: {frame_count}")
+    print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
 
 
 def start_recording(source_id):
@@ -47,10 +47,10 @@ def start_recording(source_id):
     cap = cv2.VideoCapture(source.url)
 
     if not cap.isOpened():
-        raise ValueError(f"Errore: impossibile aprire la sorgente video {source.url}")
+        raise ValueError(f"Error: opening impossible for source {source.url}")
 
     fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0 or fps > 120:  # MJPG di solito non ha FPS, RTSP può avere valori strani
+    if fps <= 0 or fps > 120:
         fps = 5.0 if source.source_type == 'mjpg' else 25.0
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -59,13 +59,13 @@ def start_recording(source_id):
     cap.release()
 
     if width == 0 or height == 0:
-        raise ValueError(f"Errore: risoluzione non valida per la sorgente {source.url}")
+        raise ValueError(f"Error: resolutions not valid for source {source.url}")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     recording_processes[source_id] = True
 
-    # Avvia un thread per la registrazione
+    # Start thread for recording
     thread = threading.Thread(
         target=record_stream,
         args=(source_id, output_path, source.url, source.source_type, fps, width, height),
@@ -83,7 +83,7 @@ def stop_recording(source_id):
     recording = Recording.objects.create(source=source, file=f'recordings/source_{source_id}.mp4')
     recording.save()
 
-    print(f"Registrazione salvata: {output_path}")
+    print(f"Recording stored: {output_path}")
 
 
 def add_watermark_and_save(source_id, text, color, font_scale):
@@ -100,7 +100,6 @@ def add_watermark_and_save(source_id, text, color, font_scale):
         fourcc = cv2.VideoWriter.fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-        # font_scale = 1.5
         font_thickness = 2
 
         def hex_to_bgr(hex_color):
@@ -123,15 +122,15 @@ def add_watermark_and_save(source_id, text, color, font_scale):
 
             frame_count += 1
 
-            # Applica watermark in basso a destra
+            # Apply watermark bottom right
             text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)[0]
             text_x = width - text_size[0] - 20
             text_y = height - 20
 
-            # Ombra nera
+            # Black shadow
             cv2.putText(frame, text, (text_x + 2, text_y + 2), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), font_thickness + 2, cv2.LINE_AA)
 
-            # Testo con colore personalizzato
+            # Text with customized color
             cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color_bgr, font_thickness, cv2.LINE_AA)
 
             out.write(frame)
@@ -149,15 +148,11 @@ def add_watermark_and_save(source_id, text, color, font_scale):
 
 
 def send_recording(source_id, output_url):
-    """
-    Invia il video registrato al server esterno tramite POST multipart/form-data.
-    Ritorna (successo, messaggio di errore)
-    """
     try:
         recording = Recording.objects.filter(source_id=source_id).latest('created_at')
 
         if not recording.file:
-            return False, "File non trovato"
+            return False, "File not found"
 
         with open(recording.file.path, 'rb') as f:
             response = requests.post(output_url, files={'file': f}, timeout=20)
@@ -165,11 +160,11 @@ def send_recording(source_id, output_url):
         if response.status_code in [200, 201, 202]:
             return True, None
         else:
-            return False, f"Errore nell'invio: {response.status_code} - {response.text}"
+            return False, f"Sending error: {response.status_code} - {response.text}"
 
     except Recording.DoesNotExist:
-        return False, "Registrazione non trovata"
+        return False, "Recording not found"
 
     except Exception as e:
-        return False, f"Errore generico: {str(e)}"
+        return False, f"Generic error: {str(e)}"
 

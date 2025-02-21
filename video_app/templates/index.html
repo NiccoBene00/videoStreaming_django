@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <title>Stream Edit and Send</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'style.css' %}">
@@ -45,8 +44,7 @@
 
     <button class="source-bt refresh-bt" id="add-resource-btn">Add Resource</button>
 
-    <!-- Form modale nascosto inizialmente -->
-    <!-- Form modale nascosto inizialmente -->
+    <!-- Modal form initially hidden -->
     <div id="add-resource-modal" class="modal hidden">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
@@ -91,7 +89,7 @@
     const feedback = document.getElementById('add-resource-feedback');
     const loadingOverlay = document.getElementById('add-resource-loading');
 
-    // Mostra il form modale
+    // Show modal form
     addResourceBtn.addEventListener('click', () => {
         modal.classList.remove('hidden');
         feedback.classList.add('hidden');
@@ -99,7 +97,7 @@
         form.reset();
     });
 
-    // Chiude il form modale
+    // Close modal form
     closeModalBtn.addEventListener('click', () => {
         modal.classList.add('hidden');
     });
@@ -121,10 +119,10 @@
             return;
         }
 
-        // Mostra il caricamento
+        // Shown loading
         loadingOverlay.classList.remove('hidden');
 
-        // Invio tramite AJAX
+        // Sending through AJAX
         fetch("{% url 'add_resource' %}", {
             method: 'POST',
             headers: {
@@ -157,7 +155,5 @@
     });
 
 </script>
-
-
 </body>
 </html>

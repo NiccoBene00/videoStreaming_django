@@ -1,14 +1,10 @@
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import StreamingHttpResponse, JsonResponse
+from django.http import StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import VideoSource
 from .streaming import start_recording, stop_recording, add_watermark_and_save, send_recording
-from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
-import json
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import json
@@ -56,21 +52,13 @@ def index(request):
     sources = VideoSource.objects.filter(user=request.user)
     return render(request, 'index.html', {'sources': sources})
 
-"""
-def index(request):
-
-    sources = VideoSource.objects.all()
-    return render(request, 'index.html', {'sources': sources})
-"""
 
 def stream_view(request, source_id):
-    """Pagina dello stream e dei controlli"""
     source = get_object_or_404(VideoSource, id=source_id)
     return render(request, 'stream_view.html', {'source': source})
 
 
 def video_feed(request, source_id):
-    """Flusso video MJPEG - Mostra il flusso live"""
     source = get_object_or_404(VideoSource, id=source_id)
 
     def generate():
@@ -91,7 +79,6 @@ def video_feed(request, source_id):
 
 @csrf_exempt
 def start_recording_view(request, source_id):
-    """Avvia la registrazione"""
     if request.method == 'POST':
         start_recording(source_id)
         return JsonResponse({'success': True})
@@ -100,11 +87,9 @@ def start_recording_view(request, source_id):
 
 @csrf_exempt
 def stop_recording_view(request, source_id):
-    """Ferma la registrazione"""
     if request.method == 'POST':
         stop_recording(source_id)
 
-        # Il nome del file è coerente con il pattern usato in streaming.py
         filename = f'source_{source_id}.mp4'
 
         return JsonResponse({'success': True, 'filename': filename})
@@ -114,7 +99,6 @@ def stop_recording_view(request, source_id):
 
 @csrf_exempt
 def add_watermark_view(request, source_id):
-    """Applica il watermark al video registrato"""
     if request.method == 'POST':
         text = request.POST.get('watermark_text')
         print(f"Applying watermark with text: '{text}'")
@@ -131,9 +115,6 @@ def add_watermark_view(request, source_id):
 
 @csrf_exempt
 def send_recording_view(request, source_id):
-    """
-    Invia il video registrato a un URL esterno.
-    """
     if request.method == 'POST':
         output_url = request.POST.get('output_url')
 
@@ -149,43 +130,9 @@ def send_recording_view(request, source_id):
 
     return JsonResponse({'success': False, 'error': 'Metodo non consentito'})
 
-"""
-@csrf_exempt
-def add_video_source(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body.decode('utf-8'))
-            name = data.get('name')
-            url = data.get('url')
-            source_type = data.get('source_type')
-
-            # Validazioni lato server
-            if not name.strip():
-                return JsonResponse({'success': False, 'error': 'Name cannot be empty.'})
-
-            validate = URLValidator()
-            try:
-                validate(url)
-            except ValidationError:
-                return JsonResponse({'success': False, 'error': 'Invalid URL.'})
-
-            if source_type not in ['rtsp', 'mjpg']:
-                return JsonResponse({'success': False, 'error': 'Invalid source type.'})
-
-            # Creazione della risorsa
-            VideoSource.objects.create(name=name, url=url, source_type=source_type)
-
-            return JsonResponse({'success': True})
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
-
-"""
 
 def validate_rtsp_stream(url):
-    """Verifica se l'URL RTSP è valido aprendo il flusso con OpenCV."""
+
     cap = cv2.VideoCapture(url)
     if cap.isOpened():
         cap.release()
@@ -195,7 +142,6 @@ def validate_rtsp_stream(url):
 
 
 def validate_mjpg_stream(url):
-    """Verifica se l'URL MJPG è valido controllando la risposta HTTP."""
     try:
         response = requests.get(url, stream=True, timeout=5)
         content_type = response.headers.get('Content-Type', '')
@@ -204,6 +150,7 @@ def validate_mjpg_stream(url):
     except requests.RequestException:
         return False
     return False
+
 
 def add_resource_view(request):
     if request.method == 'POST':
@@ -219,14 +166,12 @@ def add_resource_view(request):
             if not url.startswith('http'):
                 return JsonResponse({'success': False, 'error': 'Invalid URL'})
 
-            # Controllo se il nome o l'URL esiste già per l'utente corrente
             if VideoSource.objects.filter(user=request.user, name=name).exists():
                 return JsonResponse({'success': False, 'error': 'A resource with this name already exists'})
 
             if VideoSource.objects.filter(user=request.user, url=url).exists():
                 return JsonResponse({'success': False, 'error': 'A resource with this URL already exists'})
 
-            # Controlli specifici in base al tipo di stream
             if source_type == 'rtsp':
                 if not validate_rtsp_stream(url):
                     return JsonResponse({'success': False, 'error': 'Invalid RTSP stream URL'})
@@ -235,7 +180,7 @@ def add_resource_view(request):
                 if not validate_mjpg_stream(url):
                     return JsonResponse({'success': False, 'error': 'Invalid MJPG stream URL'})
 
-            # Inserimento nel database se i controlli sono andati bene
+            # Add resource after checking
             VideoSource.objects.create(
                 user=request.user,
                 name=name,
