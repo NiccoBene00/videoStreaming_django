@@ -1,22 +1,20 @@
-# Python
-__pycache__/              # Ignora le cartelle di cache di Python
-*.pyc                     # Ignora i file compilati (.pyc)
-*.pyo                     # Ignora i file ottimizzati (.pyo)
-*.pyd                     # Ignora i file di estensione .pyd
 
-# Ambiente Virtuale
-*.env                     # Ignora i file di configurazione dell'ambiente (spesso contenenti variabili sensibili)
-*.venv/                   # Ignora la cartella dell'ambiente virtuale (se usi un ambiente virtuale per il progetto)
+__pycache__/              # Ignora le cartelle di cache di Python
+*.pyc                     
+*.pyo                     
+*.pyd                     
+
+*.env                     # Ignora i file di configurazione dell'ambiente 
+*.venv/                   # Ignora la cartella dell'ambiente virtuale 
 
 # Django
-*.db                      # Ignora i file del database (ad esempio, SQLite)
-*.sqlite3                 # Ignora i file SQLite (se usi SQLite per il database di sviluppo)
+*.db                      # Ignora i file del database 
+*.sqlite3                 # Ignora i file SQLite 
 *.log                     # Ignora i file di log
-local_settings.py          # Ignora il file di impostazioni locali (se presente)
+local_settings.py          
 
 # PyCharm
 .idea/                    # Ignora la cartella di configurazione di PyCharm
 
-# Altri file generati
 *.bak                     # Ignora i file di backup
 *.swp                     # Ignora i file swap
