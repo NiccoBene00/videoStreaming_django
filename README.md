@@ -15,7 +15,7 @@ La fase di recording è facilmente guidata dall'applicazione; consiglio solo di 
 A registrazione terminata viene salvata una copia nella cartella `media/recordings/source_id.mp4` del progetto PyCharm.
 
 Osservazione: per i flussi mjpg il file della registrazione potrebbe avere una durata diversa del tempo di effettiva registrazione. Gli stream mjpg non sono infatti flussi continui di frame, dunque 
-              alcuni di questi potrebbero andare persi (delay di rete, ecc...). Nel terminale di PyCharm vengono comunque specificati il numero di frame acquisiti per ogni registrazione.
+              alcuni di questi potrebbero andare persi (delay di rete, ecc...). Nel terminale di PyCharm vengono comunque specificati i frame acquisiti per ogni registrazione.
 
 ## Editing
 
