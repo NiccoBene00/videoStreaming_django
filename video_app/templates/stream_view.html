@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ source.name }} - Stream Control</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="stylesheet" href="{% static 'mainstyle.css' %}">
     <style>
         button:disabled {
             background-color: #ccc;
@@ -19,7 +19,7 @@
     <h1>Stream Control - {{ source.name }}</h1>
 </header>
 
-<div class="container">
+<div class="main-container">
 
     <!-- Video Stream -->
     <div id="video-section" class="video-container">
@@ -129,7 +129,7 @@
     // START RECORDING
     startButton.addEventListener('click', function () {
         startButton.disabled = true;
-        stopButton.disabled = true; // Blocca entrambi temporaneamente per sicurezza
+        stopButton.disabled = true; // Disable both temporarily
         homeButton.disabled = true;
 
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stream Edit and Send</title>
     {% load static %}
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <link rel="stylesheet" href="{% static 'mainstyle.css' %}">
 </head>
 <body>
 <header>
@@ -22,7 +22,7 @@
     </div>
 </header>
 
-<div class="container">
+<div class="main-container">
     <h2 style="font-size: 21px">Available Streams</h2>
     <br>
     <div class="streams-list">
@@ -102,7 +102,7 @@
         modal.classList.add('hidden');
     });
 
-    // Gestisce l'invio del form tramite AJAX
+    // Menaging form submit through AJAX
     form.addEventListener('submit', function (e) {
         e.preventDefault();
 
@@ -144,11 +144,11 @@
                     feedback.textContent = 'Error: ' + data.error;
                     feedback.style.color = 'red';
                     feedback.classList.remove('hidden');
-                }
+                }                feedback.textContent = 'Unexpected error.';
+
             })
             .catch(error => {
                 loadingOverlay.classList.add('hidden');
-                feedback.textContent = 'Unexpected error.';
                 feedback.style.color = 'red';
                 feedback.classList.remove('hidden');
             });
