@@ -1,6 +1,6 @@
 # Helpful Tips
 
-L'applicazione è stata sviluppata con PyCharm e permette di acquisire flussi stream live di telecamere (mjpg o rtsp stream), dunque di effettuare una registrazione di questi e inviarla su un indirizzo esterno, dopo avere la possibilità di eseguire una fase di editing attraverso l'inclusione di un watermark di font e colore personalizzabile nell'angolo in basso a destra.
+L'applicazione, sviluppata con PyCharm, permette di acquisire flussi stream live di telecamere (mjpg o rtsp stream), dunque di effettuare una registrazione di questi e inviarla su un indirizzo esterno, dopo avere la possibilità di eseguire una fase di editing attraverso l'inclusione di un watermark di font e colore personalizzabile nell'angolo in basso a destra.
 
 ## Accesso
 
