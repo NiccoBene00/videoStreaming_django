@@ -1,3 +1,4 @@
+import concurrent.futures
 import cv2
 import os
 import time
@@ -32,8 +33,8 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
         frame_count += 1
 
         # Only for mjpg -> add artificial delay
-        #if source_type == 'mjpg':
-        #    time.sleep(1 / fps)
+        if source_type == 'mjpg':
+            time.sleep(1 / fps)
 
     cap.release()
     out.release()
