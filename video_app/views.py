@@ -1,3 +1,4 @@
+import traceback
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import StreamingHttpResponse
@@ -119,7 +120,7 @@ def send_recording_view(request, source_id):
         output_url = request.POST.get('output_url')
 
         if not output_url:
-            return JsonResponse({'success': False, 'error': 'Output URL mancante'})
+            return JsonResponse({'success': False, 'error': 'Output URL missing'})
 
         success, error_message = send_recording(source_id, output_url)
 
@@ -128,7 +129,7 @@ def send_recording_view(request, source_id):
         else:
             return JsonResponse({'success': False, 'error': error_message})
 
-    return JsonResponse({'success': False, 'error': 'Metodo non consentito'})
+    return JsonResponse({'success': False, 'error': 'Function not consented'})
 
 
 def validate_rtsp_stream(url):
@@ -155,29 +156,40 @@ def validate_mjpg_stream(url):
 def add_resource_view(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body.decode('utf-8'))
-            name = data.get('name')
-            url = data.get('url')
-            source_type = data.get('source_type')
+            try:
+                data = json.loads(request.body.decode('utf-8'))
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'error': 'Invalid JSON format'})
 
-            if not name or not name.strip():
-                return JsonResponse({'success': False, 'error': 'Name cannot be empty'})
+            name = data.get('name', '').strip()
+            url = data.get('url', '').strip()
+            source_type = data.get('source_type', '').strip()
+
+            if not url.startswith('http'):
+                return JsonResponse({'success': False, 'error': 'Invalid URL'})
+
+            if not source_type or source_type not in ['rtsp', 'mjpg']:
+                return JsonResponse({'success': False, 'error': 'Invalid stream type'})
 
             if VideoSource.objects.filter(user=request.user, name=name).exists():
-                return JsonResponse({'success': False, 'error': 'A resource with this name already exists'})
+                return JsonResponse({'success': False, 'error': 'A resource with this name already exists for your '
+                                                                'account'})
 
             if VideoSource.objects.filter(user=request.user, url=url).exists():
-                return JsonResponse({'success': False, 'error': 'A resource with this URL already exists'})
+                return JsonResponse({'success': False, 'error': 'A resource with this URL already exists for your '
+                                                                'account'})
 
+            # Validations according to the stream type
             if source_type == 'rtsp':
+                if not url.startswith('rtsp'):
+                    return JsonResponse({'success': False, 'error': 'RTPS URL must start with rtsp'})
                 if not validate_rtsp_stream(url):
                     return JsonResponse({'success': False, 'error': 'Invalid RTSP stream URL'})
 
-            elif source_type == 'mjpg':
-                if not validate_mjpg_stream(url):
-                    return JsonResponse({'success': False, 'error': 'Invalid MJPG stream URL'})
+            if source_type == 'mjpg' and not validate_mjpg_stream(url):
+                return JsonResponse({'success': False, 'error': 'Invalid MJPG stream URL'})
 
-            # Add resource after checking
+            # Resource creating
             VideoSource.objects.create(
                 user=request.user,
                 name=name,
@@ -188,6 +200,7 @@ def add_resource_view(request):
             return JsonResponse({'success': True})
 
         except Exception as e:
+            traceback.print_exc() # Print the exception on terminal
             return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
 
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})

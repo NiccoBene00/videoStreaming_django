@@ -102,7 +102,7 @@
         modal.classList.add('hidden');
     });
 
-    // Menaging form submit through AJAX
+    // Managing form submit through AJAX
     form.addEventListener('submit', function (e) {
         e.preventDefault();
 
@@ -131,7 +131,12 @@
             },
             body: JSON.stringify({name, url, source_type: sourceType})
         })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 loadingOverlay.classList.add('hidden');
 
@@ -144,11 +149,11 @@
                     feedback.textContent = 'Error: ' + data.error;
                     feedback.style.color = 'red';
                     feedback.classList.remove('hidden');
-                }                feedback.textContent = 'Unexpected error.';
-
+                }
             })
             .catch(error => {
                 loadingOverlay.classList.add('hidden');
+                feedback.textContent = `Unexpected error: ${error.message}`;
                 feedback.style.color = 'red';
                 feedback.classList.remove('hidden');
             });

@@ -9,10 +9,11 @@ from .models import VideoSource, Recording
 recording_processes = {}  # Dictionary to keeping track active threads
 
 
+# Capture the video frames in order to store them in .mp4 file as long as the recording is active
 def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
     cap = cv2.VideoCapture(source_url)
 
-    fourcc = cv2.VideoWriter.fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter.fourcc(*'mp4v')  # codec configurations for .mp4 files
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     if not cap.isOpened() or not out.isOpened():
@@ -31,8 +32,8 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
         frame_count += 1
 
         # Only for mjpg -> add artificial delay
-        if source_type == 'mjpg':
-            time.sleep(1 / fps)
+        #if source_type == 'mjpg':
+        #    time.sleep(1 / fps)
 
     cap.release()
     out.release()
@@ -40,19 +41,23 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
     print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
 
 
+# Initialize the recording, check source state and start a parallel tread for starting recording
 def start_recording(source_id):
-    source = VideoSource.objects.get(id=source_id)
+    source = VideoSource.objects.get(id=source_id)  # retrieve source from db
     output_path = os.path.join(settings.MEDIA_ROOT, 'recordings', f'source_{source.id}.mp4')
 
-    cap = cv2.VideoCapture(source.url)
+    cap = cv2.VideoCapture(source.url)  # open the stream
 
     if not cap.isOpened():
         raise ValueError(f"Error: opening impossible for source {source.url}")
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    fps = cap.get(cv2.CAP_PROP_FPS)  # retrieve video fps (some streams may not have a standard fps)
     if fps <= 0 or fps > 120:
-        fps = 5.0 if source.source_type == 'mjpg' else 25.0
+        fps = 5.0 if source.source_type == 'mjpg' else 25.0  # default fps if the original is too low or too high
+        # for MJPG: default fps:5
+        # for RTSP: default fps:25
 
+    # Retrieve video resolution in order to establish eventual errors
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -63,14 +68,14 @@ def start_recording(source_id):
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    recording_processes[source_id] = True
+    recording_processes[source_id] = True  # start recording flag
 
     # Start thread for recording
     thread = threading.Thread(
         target=record_stream,
         args=(source_id, output_path, source.url, source.source_type, fps, width, height),
     )
-    thread.start()
+    thread.start()  # start parallel recording thread
 
 
 def stop_recording(source_id):
@@ -95,7 +100,7 @@ def add_watermark_and_save(source_id, text, color, font_scale):
         cap = cv2.VideoCapture(input_path)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        fps = cap.get(cv2.CAP_PROP_FPS)
 
         fourcc = cv2.VideoWriter.fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
@@ -128,10 +133,12 @@ def add_watermark_and_save(source_id, text, color, font_scale):
             text_y = height - 20
 
             # Black shadow
-            cv2.putText(frame, text, (text_x + 2, text_y + 2), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), font_thickness + 2, cv2.LINE_AA)
+            cv2.putText(frame, text, (text_x + 2, text_y + 2), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0),
+                        font_thickness + 2, cv2.LINE_AA)
 
             # Text with customized color
-            cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color_bgr, font_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color_bgr, font_thickness,
+                        cv2.LINE_AA)
 
             out.write(frame)
 
