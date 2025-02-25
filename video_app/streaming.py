@@ -9,8 +9,7 @@ from .models import VideoSource, Recording
 
 recording_processes = {}  # Dictionary to keeping track active threads
 
-
-# Capture the video frames in order to store them in .mp4 file as long as the recording is active
+"""
 def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
     cap = cv2.VideoCapture(source_url)
 
@@ -40,6 +39,50 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
     out.release()
 
     print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
+"""
+
+# Capture the video frames in order to store them in .mp4 file as long as the recording is active
+def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
+    cap = cv2.VideoCapture(source_url)
+
+    fourcc = cv2.VideoWriter.fourcc(*'mp4v')  # codec configurations for .mp4 files
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    if not cap.isOpened() or not out.isOpened():
+        print(f"Error: impossible starting recording for {source_url}")
+        return
+
+    frame_count = 0
+    prev_time = time.time()
+
+    while recording_processes.get(source_id):
+        ret, frame = cap.read()
+        if not ret:
+            print(f"Error: frame not available for {source_url}")
+            break
+
+        # Write the current frame to the output file
+        out.write(frame)
+        frame_count += 1
+
+        # Calculate the time difference
+        current_time = time.time()
+        time_diff = current_time - prev_time
+
+        # Synchronize based on frame rate
+        if time_diff < (1 / fps):
+            time.sleep((1 / fps) - time_diff)  # Sleep to maintain the correct frame rate
+
+        prev_time = time.time()  # Update the previous time
+
+        # Only for MJPEG streams, ensure artificial delay (frame rate control)
+        if source_type == 'mjpg':
+            time.sleep(0.001)  # Small sleep to avoid CPU overload in case of high FPS
+
+    cap.release()
+    out.release()
+
+    print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
 
 
 # Initialize the recording, check source state and start a parallel tread for starting recording
@@ -58,7 +101,7 @@ def start_recording(source_id):
         # for MJPG: default fps:5
         # for RTSP: default fps:25
 
-    # Retrieve video resolution in order to establish eventual errors
+    # Retrieve video resolution to check for errors
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 

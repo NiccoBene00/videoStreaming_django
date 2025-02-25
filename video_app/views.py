@@ -12,6 +12,7 @@ import json
 import requests
 import cv2
 from django.http import JsonResponse
+import time
 
 
 def signup_view(request):
@@ -59,6 +60,7 @@ def stream_view(request, source_id):
     return render(request, 'stream_view.html', {'source': source})
 
 
+"""
 def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
 
@@ -72,6 +74,47 @@ def video_feed(request, source_id):
             _, buffer = cv2.imencode('.jpg', frame)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+        cap.release()
+
+    return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
+"""
+
+
+def video_feed(request, source_id):
+    source = get_object_or_404(VideoSource, id=source_id)
+
+    def generate():
+        cap = cv2.VideoCapture(source.url)
+
+        # Set min buffer to avoid delays
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0 or fps > 120:
+            fps = 25.0  # Default MJPG
+        frame_delay = 1 / fps  # Delay between two frames
+        prev_time = time.time()
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print(f"[ERROR] Stream not available: {source.url}")
+                break
+
+            # Compress frame into JPEG format
+            _, buffer = cv2.imencode('.jpg', frame)
+
+            # Send frame to buffer
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+            # Synchronize frame rate
+            current_time = time.time()
+            time_diff = current_time - prev_time
+            if time_diff < frame_delay:
+                time.sleep(frame_delay - time_diff)  # Sleep to maintain frame rate
+            prev_time = time.time()  # Update the previous time
 
         cap.release()
 
@@ -133,7 +176,6 @@ def send_recording_view(request, source_id):
 
 
 def validate_rtsp_stream(url):
-
     cap = cv2.VideoCapture(url)
     if cap.isOpened():
         cap.release()
@@ -200,7 +242,7 @@ def add_resource_view(request):
             return JsonResponse({'success': True})
 
         except Exception as e:
-            traceback.print_exc() # Print the exception on terminal
+            traceback.print_exc()  # Print the exception on terminal
             return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})

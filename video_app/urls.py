@@ -1,15 +1,6 @@
 """urls.py is used to define the URL patterns for the Django app.
 In particular this file allows to link the views to the URLs."""
 
-""""
-from django.urls import path
-from .views import index, video_feed
-
-urlpatterns = [
-    path('', index, name='index'),
-    path('video/<int:source_id>/', video_feed, name='video_feed'),
-]
-"""
 
 from django.urls import path
 from . import views
