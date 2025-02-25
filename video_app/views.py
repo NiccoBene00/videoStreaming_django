@@ -13,6 +13,7 @@ import requests
 import cv2
 from django.http import JsonResponse
 import time
+import xml.etree.ElementTree as ET
 
 
 def signup_view(request):
@@ -83,6 +84,9 @@ def video_feed(request, source_id):
 
 def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
+
+    if source.source_type == 'mpd':
+        return JsonResponse({'mpd_url': source.url})  # MPEG-DASH deve essere gestito da un player esterno
 
     def generate():
         cap = cv2.VideoCapture(source.url)
@@ -195,43 +199,72 @@ def validate_mjpg_stream(url):
     return False
 
 
+def validate_mpd_stream(url):
+    try:
+        # Effettua una richiesta GET all'URL del file MPD
+        response = requests.get(url, timeout=5)
+
+        # Verifica se la risposta HTTP è 200 OK
+        if response.status_code != 200:
+            return False
+
+        # Controlla se il Content-Type è corretto
+        content_type = response.headers.get('Content-Type', '')
+        if 'application/dash+xml' not in content_type and 'text/xml' not in content_type:
+            return False
+
+        # Verifica se il contenuto è un file MPD valido (XML)
+        try:
+            root = ET.fromstring(response.text)
+            if root.tag.endswith("MPD"):  # Verifica se il file XML ha un tag MPD
+                return True
+        except ET.ParseError:
+            return False
+
+    except requests.RequestException:
+        return False
+
+    return False
+
 def add_resource_view(request):
+
     if request.method == 'POST':
         try:
             try:
                 data = json.loads(request.body.decode('utf-8'))
             except json.JSONDecodeError:
-                return JsonResponse({'success': False, 'error': 'Invalid JSON format'})
+                return JsonResponse({'success': False, 'error': 'JSON data not valid'})
 
             name = data.get('name', '').strip()
             url = data.get('url', '').strip()
             source_type = data.get('source_type', '').strip()
 
-            if not url.startswith('http'):
-                return JsonResponse({'success': False, 'error': 'Invalid URL'})
-
-            if not source_type or source_type not in ['rtsp', 'mjpg']:
+            if source_type not in ['rtsp', 'mjpg', 'mpd']:
                 return JsonResponse({'success': False, 'error': 'Invalid stream type'})
 
             if VideoSource.objects.filter(user=request.user, name=name).exists():
-                return JsonResponse({'success': False, 'error': 'A resource with this name already exists for your '
-                                                                'account'})
+                return JsonResponse({'success': False, 'error': 'A resource with this name already exists for your account'})
 
             if VideoSource.objects.filter(user=request.user, url=url).exists():
-                return JsonResponse({'success': False, 'error': 'A resource with this URL already exists for your '
-                                                                'account'})
+                return JsonResponse({'success': False, 'error': 'A resource with this URL already exists for your account'})
 
-            # Validations according to the stream type
+            # Controlli specifici per ogni tipo di flusso
             if source_type == 'rtsp':
                 if not url.startswith('rtsp'):
-                    return JsonResponse({'success': False, 'error': 'RTPS URL must start with rtsp'})
+                    return JsonResponse({'success': False, 'error': 'L\'URL for rtsp stream must start with "rtsp://"'})
                 if not validate_rtsp_stream(url):
-                    return JsonResponse({'success': False, 'error': 'Invalid RTSP stream URL'})
+                    return JsonResponse({'success': False, 'error': 'Invalid RTSP stream'})
 
-            if source_type == 'mjpg' and not validate_mjpg_stream(url):
-                return JsonResponse({'success': False, 'error': 'Invalid MJPG stream URL'})
+            elif source_type == 'mjpg' and not validate_mjpg_stream(url):
+                return JsonResponse({'success': False, 'error': 'Invalid MJPEG stream'})
 
-            # Resource creating
+            elif source_type == 'mpd' and not url.endswith('.mpd'):
+                return JsonResponse({'success': False, 'error': 'L\'URL for mpd stream must end with ".mpd"'})
+
+            elif source_type == 'mpd' and not validate_mpd_stream(url):
+                return JsonResponse({'success': False, 'error': 'Invalid MPD stream URL'})
+
+            # Creazione della risorsa
             VideoSource.objects.create(
                 user=request.user,
                 name=name,
@@ -242,7 +275,7 @@ def add_resource_view(request):
             return JsonResponse({'success': True})
 
         except Exception as e:
-            traceback.print_exc()  # Print the exception on terminal
-            return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': f'Errore inatteso: {str(e)}'})
 
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    return JsonResponse({'success': False, 'error': 'Metodo di richiesta non valido'})

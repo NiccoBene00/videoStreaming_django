@@ -3,17 +3,27 @@ from django.contrib.auth.models import User
 
 
 class VideoSource(models.Model):
+    STREAM_TYPES = [
+        ('rtsp', 'RTSP'),
+        ('mjpg', 'MJPG'),
+        ('mpd', 'MPEG-DASH')  # Nuovo supporto per MPEG-DASH
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255)
     url = models.URLField()
     source_type = models.CharField(
         max_length=10,
-        choices=[('rtsp', 'RTSP'), ('mjpg', 'MJPG')],
+        choices=STREAM_TYPES,
         default='rtsp'
     )
 
     def __str__(self):
-        return f"{self.name} ({self.user.username if self.user else 'No User'})"
+        return f"{self.name} ({self.user.username if self.user else 'No User'}) - {self.source_type}"
+
+    def is_dash(self):
+        """Verifica se la sorgente è un flusso MPEG-DASH"""
+        return self.source_type == 'mpd'
 
 
 class Recording(models.Model):

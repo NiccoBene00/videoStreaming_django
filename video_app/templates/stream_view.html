@@ -5,6 +5,19 @@
     <title>{{ source.name }} - Stream Control</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'mainstyle.css' %}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.0.4/video-js.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.0.4/video.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (document.getElementById("video-stream") && "{{ source.source_type }}" === "mpd") {
+                videojs("video-stream", {
+                    controls: true,
+                    autoplay: false,
+                    preload: "auto"
+                });
+            }
+        });
+    </script>
     <style>
         button:disabled {
             background-color: #ccc;
@@ -23,7 +36,16 @@
 
     <!-- Video Stream -->
     <div id="video-section" class="video-container">
-        <img id="video-stream" src="{% url 'video_feed' source.id %}" alt="Live Stream">
+        {% if source.source_type == "mpd" %}
+            <!-- MPEG-DASH player -->
+            <video-js id="video-stream" controls preload="auto" >
+                <source src="{{ source.url }}" type="application/dash+xml">
+            </video-js>
+        {% else %}
+            <!-- MJPG & RTSP stream -->
+            <img id="video-stream" src="{% url 'video_feed' source.id %}" alt="Live Stream">
+        {% endif %}
+
         <div id="recording-dot" class="recording-dot" style="display:none;"></div>
         <div id="loading-overlayStream" class="loading-overlay">
             <div class="spinner"></div>
@@ -111,7 +133,7 @@
             loadingOverlay.style.display = "none";
             errorMessage.style.display = "block";
             startButton.disabled = true;
-        }, 10000);
+        }, 30000);
 
         videoStream.onload = function () {
             clearTimeout(timeout);
