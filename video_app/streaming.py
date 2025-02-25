@@ -131,14 +131,11 @@ def start_recording(source_id):
 
 
 def record_mpd_stream(source_id, source_url):
-    """
-    Registra un flusso MPEG-DASH usando yt-dlp o ffmpeg.
-    """
     output_path = os.path.join(settings.MEDIA_ROOT, 'recordings', f'source_{source_id}.mp4')
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    print(f"🎥 Avvio registrazione MPEG-DASH per {source_url}...")
+    print(f"Starting recording MPEG-DASH for {source_url}...")
 
     command = [
         "yt-dlp",
@@ -150,10 +147,10 @@ def record_mpd_stream(source_id, source_url):
 
     try:
         subprocess.run(command, check=True)
-        print(f"✅ Registrazione MPEG-DASH completata: {output_path}")
+        print(f"Recording MPEG-DASH completed: {output_path}")
         return output_path
     except subprocess.CalledProcessError as e:
-        print(f"❌ Errore nella registrazione MPEG-DASH: {str(e)}")
+        print(f"Error MPEG-DASH recording: {str(e)}")
         return None
 
 def stop_recording(source_id):
