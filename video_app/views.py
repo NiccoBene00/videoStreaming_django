@@ -207,9 +207,6 @@ def add_resource_view(request):
             url = data.get('url', '').strip()
             source_type = data.get('source_type', '').strip()
 
-            if not url.startswith('http'):
-                return JsonResponse({'success': False, 'error': 'Invalid URL'})
-
             if not source_type or source_type not in ['rtsp', 'mjpg']:
                 return JsonResponse({'success': False, 'error': 'Invalid stream type'})
 
