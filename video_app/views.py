@@ -276,6 +276,6 @@ def add_resource_view(request):
 
         except Exception as e:
             traceback.print_exc()
-            return JsonResponse({'success': False, 'error': f'Errore inatteso: {str(e)}'})
+            return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
 
-    return JsonResponse({'success': False, 'error': 'Metodo di richiesta non valido'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
