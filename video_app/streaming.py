@@ -1,4 +1,3 @@
-import concurrent.futures
 import cv2
 import os
 import time
@@ -6,41 +5,10 @@ import threading
 import requests
 from django.conf import settings
 from .models import VideoSource, Recording
-import subprocess
+
 
 recording_processes = {}  # Dictionary to keeping track active threads
 
-"""
-def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
-    cap = cv2.VideoCapture(source_url)
-
-    fourcc = cv2.VideoWriter.fourcc(*'mp4v')  # codec configurations for .mp4 files
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-
-    if not cap.isOpened() or not out.isOpened():
-        print(f"Error: impossible starting recording for {source_url}")
-        return
-
-    frame_count = 0
-
-    while recording_processes.get(source_id):
-        ret, frame = cap.read()
-        if not ret:
-            print(f"Error: frame not available for {source_url}")
-            break
-
-        out.write(frame)
-        frame_count += 1
-
-        # Only for mjpg -> add artificial delay
-        if source_type == 'mjpg':
-            time.sleep(1 / fps)
-
-    cap.release()
-    out.release()
-
-    print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
-"""
 
 # Capture the video frames in order to store them in .mp4 file as long as the recording is active
 def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
@@ -79,7 +47,7 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
 
         # Only for MJPEG streams, ensure artificial delay (frame rate control)
         if source_type == 'mjpg':
-            time.sleep(0.002)  # Small sleep to avoid CPU overload in case of high FPS
+            time.sleep(0.002)  # Small sleep to avoid CPU overloads in case of high FPS
 
     cap.release()
     out.release()
@@ -91,12 +59,6 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
 def start_recording(source_id):
     source = VideoSource.objects.get(id=source_id)  # retrieve source from db
     output_path = os.path.join(settings.MEDIA_ROOT, 'recordings', f'source_{source.id}.mp4')
-
-    if source.source_type == "mpd":
-        # Se è un flusso MPEG-DASH, usiamo yt-dlp invece di OpenCV
-        thread = threading.Thread(target=record_mpd_stream, args=(source_id, source.url))
-        thread.start()
-        return
 
     cap = cv2.VideoCapture(source.url)  # open the stream
 
@@ -129,29 +91,6 @@ def start_recording(source_id):
     )
     thread.start()  # start parallel recording thread
 
-
-def record_mpd_stream(source_id, source_url):
-    output_path = os.path.join(settings.MEDIA_ROOT, 'recordings', f'source_{source_id}.mp4')
-
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-    print(f"Starting recording MPEG-DASH for {source_url}...")
-
-    command = [
-        "yt-dlp",
-        "--format", "bestvideo+bestaudio",
-        "--merge-output-format", "mp4",
-        "--output", output_path,
-        source_url
-    ]
-
-    try:
-        subprocess.run(command, check=True)
-        print(f"Recording MPEG-DASH completed: {output_path}")
-        return output_path
-    except subprocess.CalledProcessError as e:
-        print(f"Error MPEG-DASH recording: {str(e)}")
-        return None
 
 def stop_recording(source_id):
     if source_id in recording_processes:

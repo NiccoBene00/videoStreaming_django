@@ -13,6 +13,7 @@ import requests
 import cv2
 from django.http import JsonResponse
 import time
+import subprocess
 import xml.etree.ElementTree as ET
 
 
@@ -86,7 +87,7 @@ def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
 
     if source.source_type == 'mpd':
-        return JsonResponse({'mpd_url': source.url})  # MPEG-DASH deve essere gestito da un player esterno
+        return JsonResponse({'mpd_url': source.url})  # MPEG-DASH has to be managed differently (external player)
 
     def generate():
         cap = cv2.VideoCapture(source.url)
@@ -123,6 +124,89 @@ def video_feed(request, source_id):
         cap.release()
 
     return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
+
+
+"""
+#OpencCV for MJPEG and ffmpeg for RTSP
+def video_feed(request, source_id):
+    source = get_object_or_404(VideoSource, id=source_id)
+
+    print("source.source_type: ", source.source_type)
+    
+    if source.source_type == 'mpd':
+        return JsonResponse({'mpd_url': source.url})  # MPEG-DASH gestito separatamente
+
+    def generate_opencv():
+
+        cap = cv2.VideoCapture(source.url)
+
+        # Set min buffer to avoid delays
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0 or fps > 120:
+            fps = 25.0  # Default MJPG
+        frame_delay = 1 / fps  # Delay between two frames
+        prev_time = time.time()
+
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print(f"[ERROR] Stream not available: {source.url}")
+                break
+
+            # Compress frame into JPEG format
+            _, buffer = cv2.imencode('.jpg', frame)
+
+            # Send frame to buffer
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
+            # Synchronize frame rate
+            current_time = time.time()
+            time_diff = current_time - prev_time
+            if time_diff < frame_delay:
+                time.sleep(frame_delay - time_diff)  # Sleep to maintain frame rate
+            prev_time = time.time()  # Update the previous time
+
+        cap.release()
+
+    def generate_ffmpeg():
+    
+        print("Opening rtsp stream with ffmpeg...")
+
+        # Comando ffmpeg per catturare il flusso RTSP e convertirlo in MJPEG
+        command = [
+            'ffmpeg',  # Il programma ffmpeg
+            '-i', source.url,  # URL del flusso RTSP
+            '-f', 'mjpeg',  # Formato MJPEG
+            '-q:v', '5',  # Qualità del flusso MJPEG
+            '-r', '30',  # Frame rate (può essere regolato)
+            '-'
+        ]
+
+        # Creazione di un processo subprocess che esegue ffmpeg
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        try:
+            while True:
+                # Leggi un frame dalla stdout di ffmpeg
+                frame = process.stdout.read(1024)
+                if not frame:
+                    break
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+        except Exception as e:
+            print(f"Errore durante il flusso: {e}")
+        finally:
+            process.stdout.close()
+
+    # Se il flusso è MJPG → OpenCV, se è RTSP → FFmpeg
+    if source.source_type == "rtsp":
+        return StreamingHttpResponse(generate_ffmpeg(), content_type='multipart/x-mixed-replace; boundary=frame')
+    else:
+        return StreamingHttpResponse(generate_opencv(), content_type='multipart/x-mixed-replace; boundary=frame')
+"""
 
 
 @csrf_exempt
@@ -181,7 +265,9 @@ def send_recording_view(request, source_id):
 
 def validate_rtsp_stream(url):
     cap = cv2.VideoCapture(url)
+
     if cap.isOpened():
+        print("rtsp stream opened successfully")
         cap.release()
         return True
     cap.release()
@@ -193,6 +279,7 @@ def validate_mjpg_stream(url):
         response = requests.get(url, stream=True, timeout=5)
         content_type = response.headers.get('Content-Type', '')
         if response.status_code == 200 and 'multipart/x-mixed-replace' in content_type:
+            print("response status:", response.status_code)
             return True
     except requests.RequestException:
         return False
@@ -201,22 +288,22 @@ def validate_mjpg_stream(url):
 
 def validate_mpd_stream(url):
     try:
-        # Effettua una richiesta GET all'URL del file MPD
+        # Try to make e request to the mpd URL
         response = requests.get(url, timeout=5)
 
-        # Verifica se la risposta HTTP è 200 OK
+        # Check if the response is valid
         if response.status_code != 200:
             return False
 
-        # Controlla se il Content-Type è corretto
+        # Check if the content type is valid
         content_type = response.headers.get('Content-Type', '')
         if 'application/dash+xml' not in content_type and 'text/xml' not in content_type:
             return False
 
-        # Verifica se il contenuto è un file MPD valido (XML)
+        # Check if the response is a valid XML file
         try:
             root = ET.fromstring(response.text)
-            if root.tag.endswith("MPD"):  # Verifica se il file XML ha un tag MPD
+            if root.tag.endswith("MPD"):  # Check if the root tag is MPD
                 return True
         except ET.ParseError:
             return False
@@ -226,8 +313,8 @@ def validate_mpd_stream(url):
 
     return False
 
-def add_resource_view(request):
 
+def add_resource_view(request):
     if request.method == 'POST':
         try:
             try:
@@ -243,12 +330,14 @@ def add_resource_view(request):
                 return JsonResponse({'success': False, 'error': 'Invalid stream type'})
 
             if VideoSource.objects.filter(user=request.user, name=name).exists():
-                return JsonResponse({'success': False, 'error': 'A resource with this name already exists for your account'})
+                return JsonResponse(
+                    {'success': False, 'error': 'A resource with this name already exists for your account'})
 
             if VideoSource.objects.filter(user=request.user, url=url).exists():
-                return JsonResponse({'success': False, 'error': 'A resource with this URL already exists for your account'})
+                return JsonResponse(
+                    {'success': False, 'error': 'A resource with this URL already exists for your account'})
 
-            # Controlli specifici per ogni tipo di flusso
+            # Specific checks for each stream type
             if source_type == 'rtsp':
                 if not url.startswith('rtsp'):
                     return JsonResponse({'success': False, 'error': 'L\'URL for rtsp stream must start with "rtsp://"'})
@@ -256,6 +345,7 @@ def add_resource_view(request):
                     return JsonResponse({'success': False, 'error': 'Invalid RTSP stream'})
 
             elif source_type == 'mjpg' and not validate_mjpg_stream(url):
+                print("source type mjpg")
                 return JsonResponse({'success': False, 'error': 'Invalid MJPEG stream'})
 
             elif source_type == 'mpd' and not url.endswith('.mpd'):
@@ -264,7 +354,7 @@ def add_resource_view(request):
             elif source_type == 'mpd' and not validate_mpd_stream(url):
                 return JsonResponse({'success': False, 'error': 'Invalid MPD stream URL'})
 
-            # Creazione della risorsa
+            # Resource creation
             VideoSource.objects.create(
                 user=request.user,
                 name=name,

@@ -6,7 +6,7 @@ class VideoSource(models.Model):
     STREAM_TYPES = [
         ('rtsp', 'RTSP'),
         ('mjpg', 'MJPG'),
-        ('mpd', 'MPEG-DASH')  # Nuovo supporto per MPEG-DASH
+        ('mpd', 'MPEG-DASH')
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -22,7 +22,6 @@ class VideoSource(models.Model):
         return f"{self.name} ({self.user.username if self.user else 'No User'}) - {self.source_type}"
 
     def is_dash(self):
-        """Verifica se la sorgente è un flusso MPEG-DASH"""
         return self.source_type == 'mpd'
 
 

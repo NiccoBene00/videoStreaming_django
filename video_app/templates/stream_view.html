@@ -5,19 +5,68 @@
     <title>{{ source.name }} - Stream Control</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'mainstyle.css' %}">
+    <!-- Video.js CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.0.4/video-js.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.0.4/video.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.3.0/video.min.js"></script>
+
+    <!-- DASH.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.6.0/dash.all.min.js"></script>
+
+    <!-- Video.js DASH Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/2.11.0/videojs-dash.min.js"></script>
+
+
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            if (document.getElementById("video-stream") && "{{ source.source_type }}" === "mpd") {
-                videojs("video-stream", {
+
+            if (typeof videojs === "undefined") {
+                console.error("Video.js not loaded.");
+                return;
+            }
+
+            if (!videojs.getTech("Html5")) {
+                console.error("HTML5 tech not available.");
+                return;
+            }
+
+            if (!videojs.getTech("Dash")) {
+                console.error("DASH tech is missing. Video.js DASH plugin not loaded.");
+                return;
+            }
+
+            console.log("Video.js and DASH.js loaded successfully.");
+
+            var videoElement = document.getElementById("video-stream");
+
+            if (videoElement && "{{ source.source_type }}" === "mpd") {
+                var player = videojs("video-stream", {
                     controls: true,
                     autoplay: false,
-                    preload: "auto"
+                    preload: "auto",
+                    techOrder: ["html5", "dash"]
+                });
+
+                player.src({
+                    src: "{{ source.url }}",
+                    type: "application/dash+xml"
+                });
+
+                player.ready(function () {
+                    console.log("Video.js player is ready!");
+                });
+
+                player.on("loadedmetadata", function () {
+                    console.log("MPD metadata loaded successfully.");
+                });
+
+                player.on("error", function (e) {
+                    console.error("Video.js error:", e);
                 });
             }
         });
     </script>
+
     <style>
         button:disabled {
             background-color: #ccc;
@@ -38,9 +87,11 @@
     <div id="video-section" class="video-container">
         {% if source.source_type == "mpd" %}
             <!-- MPEG-DASH player -->
-            <video-js id="video-stream" controls preload="auto" >
+            <video id="video-stream" controls preload="auto" autoplay playsinline muted
+                   style="pointer-events: none;user-select: none; ">
                 <source src="{{ source.url }}" type="application/dash+xml">
-            </video-js>
+            </video>
+
         {% else %}
             <!-- MJPG & RTSP stream -->
             <img id="video-stream" src="{% url 'video_feed' source.id %}" alt="Live Stream">
@@ -54,6 +105,7 @@
         <div id="error-message" class="error-message" style="display: none;">
             ⚠️ Stream could not be loaded. Please check the source.
         </div>
+
     </div>
 
     <!-- Recording control -->
@@ -111,41 +163,62 @@
     const stopButton = document.getElementById('stop-recording');
     const homeButton = document.getElementById('home-bt');
     const recordingDot = document.getElementById('recording-dot');
+    const videoStream = document.getElementById("video-stream");
+    const loadingOverlay = document.getElementById("loading-overlayStream");
+    const errorMessage = document.getElementById("error-message");
 
     function updateButtonState(isRecording) {
         if (isRecording) {
             startButton.disabled = true;
             stopButton.disabled = false;
         } else {
-            startButton.disabled = false;
+            startButton.disabled = true;
             stopButton.disabled = true;
         }
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        updateButtonState(false);
+    function showloading(state) {
+        if (state) {
+            loadingOverlay.style.display = "none";
+            errorMessage.style.display = "block";
+            startButton.disabled = true;
+        } else {
+            loadingOverlay.style.display = "none";
+            errorMessage.style.display = "none";
+            startButton.disabled = false;
+        }
 
-        const videoStream = document.getElementById("video-stream");
-        const loadingOverlay = document.getElementById("loading-overlayStream");
-        const errorMessage = document.getElementById("error-message");
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        updateButtonState(false); // Initially disabled
 
         let timeout = setTimeout(() => {
-            loadingOverlay.style.display = "none";
-            errorMessage.style.display = "block";
-            startButton.disabled = true;
-        }, 30000);
+            showloading(true);
+        }, 10000); // Timeout of 10 seconds
 
-        videoStream.onload = function () {
-            clearTimeout(timeout);
-            loadingOverlay.style.display = "none";
-        };
+        {% if source.source_type == "mpd" %}
+            clearTimeout(timeout); // delete timeout
+            loadingOverlay.style.display = "none"; // Hide loading overlay
+            errorMessage.style.display = "none"; // Hide error message
+            startButton.disabled = true; // only for streaming
 
-        videoStream.onerror = function () {
-            clearTimeout(timeout);
-            loadingOverlay.style.display = "none";
-            errorMessage.style.display = "block";
-            startButton.disabled = true;
-        };
+        {% else %}
+            // MJPG and RTSP handling
+            videoStream.onload = function () { // stream is loaded correctly
+                clearTimeout(timeout);
+                showloading(false);
+            };
+
+            videoStream.onerror = function () {
+                console.log("Error loading MJPG/RTSP stream.");
+                clearTimeout(timeout);
+                loadingOverlay.style.display = "none";
+                startButton.disabled = true;
+                errorMessage.style.display = "block";
+
+            };
+        {% endif %}
     });
 
     // START RECORDING
@@ -190,7 +263,6 @@
                 if (data.success) {
                     alert('Recording stored correctly at /media/recordings/' + data.filename);
                     recordingDot.style.display = 'none';
-
                     document.getElementById('video-section').style.display = 'none';
                     document.getElementById('controls-section').style.display = 'none';
                     document.getElementById('watermark-form').style.display = 'block';
@@ -206,70 +278,75 @@
             });
     });
 
+    function controlInputForm(disabled) {
+        if (disabled) {
 
-    document.getElementById('watermark-form').addEventListener('submit', function (event) {
-        event.preventDefault();
+        }
+    }
 
-        const form = this;
-        const loadingOverlay = document.getElementById('watermark-loading');
-        const inputText = document.getElementById('watermark_text');
-        const inputColor = document.getElementById('watermark_color');
-        const inputSize = document.getElementById('watermark_size');
-        const submitButton = document.getElementById('apply-watermark');
+    document.getElementById('watermark-form').addEventListener('submit',
+        function (event) {
+            event.preventDefault();
 
-        const formData = new FormData(form);
-        loadingOverlay.style.display = 'flex';
+            const form = this;
+            const loadingOverlay = document.getElementById('watermark-loading');
+            const inputText = document.getElementById('watermark_text');
+            const inputColor = document.getElementById('watermark_color');
+            const inputSize = document.getElementById('watermark_size');
+            const submitButton = document.getElementById('apply-watermark');
 
-        // Disable input and bottom
-        inputText.disabled = true;
-        inputColor.disabled = true;
-        inputSize.disabled = true;
-        submitButton.disabled = true;
+            const formData = new FormData(form);
+            loadingOverlay.style.display = 'flex';
 
-        fetch(form.action, {method: 'POST', body: formData})
-            .then(response => response.json())
-            .then(data => {
-                loadingOverlay.style.display = 'none';
-
-                if (data.success) {
-                    alert('Watermark applied successfully!');
-
-                    // Block form after success
+            function disableInputBottom(state) {
+                if (state) {
+                    // Disable input and bottom
                     inputText.disabled = true;
                     inputColor.disabled = true;
                     inputSize.disabled = true;
                     submitButton.disabled = true;
-
-                    // block graphic
-                    inputText.style.backgroundColor = '#f0f0f0';
-                    inputColor.style.backgroundColor = '#f0f0f0';
-                    inputSize.style.backgroundColor = '#f0f0f0';
-                    submitButton.style.backgroundColor = '#ccc';
-                    submitButton.style.color = '#666';
-                    submitButton.style.cursor = 'not-allowed';
-                    submitButton.style.opacity = '0.6';
-
                 } else {
-                    alert('Error applying watermark');
-
-                    // Enable in error case
+                    // Enable input and bottom
                     inputText.disabled = false;
                     inputColor.disabled = false;
                     inputSize.disabled = false;
                     submitButton.disabled = false;
                 }
-            })
-            .catch(error => {
-                loadingOverlay.style.display = 'none';
-                alert('Unexpected error applying watermark');
+            }
 
-                // Enable in error case
-                inputText.disabled = false;
-                inputColor.disabled = false;
-                inputSize.disabled = false;
-                submitButton.disabled = false;
-            });
-    });
+            disableInputBottom(true);
+
+            fetch(form.action, {method: 'POST', body: formData})
+                .then(response => response.json())
+                .then(data => {
+                    loadingOverlay.style.display = 'none';
+
+                    if (data.success) {
+                        alert('Watermark applied successfully!');
+
+                        disableInputBottom(true)
+
+                        // block graphic
+                        inputText.style.backgroundColor = '#f0f0f0';
+                        inputColor.style.backgroundColor = '#f0f0f0';
+                        inputSize.style.backgroundColor = '#f0f0f0';
+                        submitButton.style.backgroundColor = '#ccc';
+                        submitButton.style.color = '#666';
+                        submitButton.style.cursor = 'not-allowed';
+                        submitButton.style.opacity = '0.6';
+
+                    } else {
+                        alert('Error applying watermark');
+                        disableInputBottom(false);
+                    }
+                })
+                .catch(error => {
+                    loadingOverlay.style.display = 'none';
+                    alert('Unexpected error applying watermark');
+                    disableInputBottom(false);
+                });
+        })
+    ;
 
 
     document.getElementById('send-form').addEventListener('submit', function (event) {
@@ -279,6 +356,18 @@
         const formData = new FormData(form);
         const sendButton = document.getElementById('send-recording');
         const outputUrlInput = document.getElementById('output_url');
+
+        function disableForm(state) {
+            if (state) {
+                // Disable form
+                sendButton.disabled = true;
+                outputUrlInput.disabled = true;
+            } else {
+                // Enable form
+                sendButton.disabled = false;
+                outputUrlInput.disabled = false;
+            }
+        }
 
         // Validation URL
         const urlPattern = /^(http|https):\/\/[^ "]+$/;
@@ -293,29 +382,26 @@
         loadingOverlay.innerHTML = `<div class="spinner"></div><p>Uploading recording...</p>`;
         form.appendChild(loadingOverlay);
 
-        // Button disable to avoiding multiple sendings
-        sendButton.disabled = true;
-        outputUrlInput.disabled = true;
+        // Button disable to avoiding multiple sending
+        disableForm(true);
 
         fetch(form.action, {method: 'POST', body: formData})
             .then(response => response.json())
             .then(data => {
-                form.removeChild(loadingOverlay); // Rimuove il caricamento
+                form.removeChild(loadingOverlay); // Remove loader
 
                 if (data.success) {
                     alert('Recording uploaded correctly!');
-                    window.location.href = '/';  // Torna alla home dopo il successo
+                    window.location.href = '/';  // Redirect to home after success
                 } else {
                     alert('Error sending recording: ' + (data.error || 'Unknown error'));
-                    sendButton.disabled = false; // Riabilita il pulsante in caso di errore
-                    outputUrlInput.disabled = false;
+                    disableForm(false); // Enable form in error case
                 }
             })
             .catch(error => {
                 form.removeChild(loadingOverlay);
                 alert('Unexpected error sending recording');
-                sendButton.disabled = false; // Riabilita il pulsante
-                outputUrlInput.disabled = false;
+                disableForm(false);
             });
     });
 
