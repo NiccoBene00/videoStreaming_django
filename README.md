@@ -38,10 +38,11 @@ Attenzione: Webhook.site rifiuta l'upload di file troppo grandi senza permessi, 
      
   2. Scaricare (se non se ne dispone già) [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (spostarsi nella sezione "release builds" e cercare 
      `ffmpeg-release-essentials.zip`). Aggiungere ffmpeg al path delle varibili di ambiente in modo che il comando sia sempre raggiungibile da terminale.
-     Eseguire su una seconda window cmd `ffmpeg -re -stream_loop -1 -i "path_persona_stream.mp4" -c:v copy -f rtsp rtsp://127.0.0.1:8554/stream`
+     Scaricare/scegliere un file .mp4 per creare lo stream continuo rtsp.
+     Eseguire su una seconda window cmd `ffmpeg -re -stream_loop -1 -i "personal_path_videostream.mp4" -c:v copy -f rtsp rtsp://127.0.0.1:8554/stream`
      Osservazione: inserire il corretto numero della porte su cui rstp simple server è in ascolto per flussi rstp (viene specificato quando si esegue nell prima         window cmd `mediamtx.exe`
      
-  3. Testare lo stream su VLC, andando su `media` - `open network stream` - insert `rtsp://127.0.0.1:8554/stream`
+  4. Testare lo stream su VLC, andando su `media` - `open network stream` - insert `rtsp://127.0.0.1:8554/stream`
     
-  4. Testare il flusso sull'applicazione
+  5. Testare il flusso sull'applicazione
 
