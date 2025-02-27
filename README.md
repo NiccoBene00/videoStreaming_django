@@ -33,7 +33,7 @@ Attenzione: Webhook.site rifiuta l'upload di file troppo grandi senza permessi, 
 
 ## Come creare un flusso rtsp continuo in locale
 
-  1. Scaricare (se non si dispone già) [rtsp simple server](https://sourceforge.net/projects/rtspsimpleserver.mirror/) Estrarre i file dalla cartella dunque
+  1. Scaricare (se non si dispone già) [rtsp simple server](https://sourceforge.net/projects/rtspsimpleserver.mirror/). Estrarre i file dalla cartella dunque
      eseguire su cmd `mediamtx.exe`
      
   2. Scaricare (se non se ne dispone già) [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (spostarsi nella sezione "release builds" e cercare 
