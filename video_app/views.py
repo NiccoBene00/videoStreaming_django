@@ -60,28 +60,7 @@ def index(request):
 def stream_view(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
     return render(request, 'stream_view.html', {'source': source})
-
-
-"""
-def video_feed(request, source_id):
-    source = get_object_or_404(VideoSource, id=source_id)
-
-    def generate():
-        import cv2
-        cap = cv2.VideoCapture(source.url)
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            _, buffer = cv2.imencode('.jpg', frame)
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-
-        cap.release()
-
-    return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
-"""
-
+    
 
 def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
