@@ -7,7 +7,7 @@ Osservazione: per i flussi mpd è stata implementata la sola funzionalità di st
 
 ## Accesso
 
-Effettuare il login mediante user admin (username: "admin", pw: "admin").  
+Effettuare il login mediante user admin (username: `admin`, pw: `admin`).  
 Si troverà già una lista di flussi stream disponibili (mjpg). Ad ora non sono presenti flussi rtsp pubblici causa la difficoltà di ricerca dovuta a motivi di privacy e scadenza degli URL (tuttavia, una volta effettuato l'accesso, è sempre possibile aggiungerli qualora se ne disponesse).
 
 L'applicazione offre la possibilità di creare nuovi account per inserire stream personali.
