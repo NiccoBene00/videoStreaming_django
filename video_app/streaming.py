@@ -5,13 +5,15 @@ import threading
 import requests
 from django.conf import settings
 from .models import VideoSource, Recording
+import subprocess
 
 
 recording_processes = {}  # Dictionary to keeping track active threads
 
-
+"""
 # Capture the video frames in order to store them in .mp4 file as long as the recording is active
 def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
+
     cap = cv2.VideoCapture(source_url)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
 
@@ -53,6 +55,86 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
     out.release()
 
     print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
+"""
+
+
+def record_stream(source_id, output_path, source_url, source_type, fps, width, height):
+    # If the source is RTSP, record with FFmpeg directly.
+    if source_type == 'rtsp':
+        command = [
+            'ffmpeg',
+            '-rtsp_transport', 'tcp',
+            '-i', source_url,
+            '-c', 'copy',  # Direct stream copy
+            '-movflags', '+faststart+frag_keyframe+empty_moov',  # can help create a fragmented MP4 that’s more
+                                                                 # tolerant of an abrupt stop.
+            output_path
+        ]
+        print(f"Starting FFmpeg recording for {source_url}")
+
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE  # Enable sending commands to ffmpeg
+        )
+
+        try:
+            # Poll until the recording flag is turned off.
+            while recording_processes.get(source_id):
+                time.sleep(1)  # Check every second; adjust sleep as needed.
+        except Exception as e:
+            print(f"Error during FFmpeg recording: {e}")
+        finally:
+            # Instead of sending SIGINT, send 'q' via stdin for a graceful shutdown.
+            if process.stdin:
+                process.stdin.write(b"q\n")
+                process.stdin.flush()
+            process.wait()  # Wait for the process to terminate
+
+            # debugger test
+            stderr = process.stderr.read().decode('utf-8', errors='ignore')
+            #if stderr:
+            #    print(f"FFmpeg stderr: {stderr}")
+
+            print(f"Recording terminated for {source_url} using FFmpeg (RTSP).")
+    else:
+        # Otherwise, use OpenCV for recording (MJPEG or similar streams)
+        cap = cv2.VideoCapture(source_url)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+
+        fourcc = cv2.VideoWriter.fourcc(*'mp4v')  # codec configuration for .mp4 files
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+        if not cap.isOpened() or not out.isOpened():
+            print(f"Error: impossible starting recording for {source_url}")
+            return
+
+        frame_count = 0
+        prev_time = time.time()
+
+        while recording_processes.get(source_id):
+            ret, frame = cap.read()
+            if not ret:
+                print(f"Error: frame not available for {source_url}")
+                break
+
+            out.write(frame)
+            frame_count += 1
+
+            current_time = time.time()
+            time_diff = current_time - prev_time
+            if time_diff < (1 / fps):
+                time.sleep((1 / fps) - time_diff) # Sleep to maintain the correct frame rate
+            prev_time = time.time()
+
+            if source_type == 'mjpg':
+                time.sleep(0.002) # Small sleep to avoid CPU overloads in case of high FPS
+
+        cap.release()
+        out.release()
+
+        print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
 
 
 # Initialize the recording, check source state and start a parallel tread for starting recording

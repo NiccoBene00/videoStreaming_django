@@ -82,7 +82,7 @@ def video_feed(request, source_id):
     return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
 """
 
-
+"""
 def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
 
@@ -124,15 +124,15 @@ def video_feed(request, source_id):
         cap.release()
 
     return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
-
-
 """
-#OpencCV for MJPEG and ffmpeg for RTSP
+
+
+# OpencCV for MJPEG and ffmpeg for RTSP
 def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
 
     print("source.source_type: ", source.source_type)
-    
+
     if source.source_type == 'mpd':
         return JsonResponse({'mpd_url': source.url})  # MPEG-DASH gestito separatamente
 
@@ -172,41 +172,54 @@ def video_feed(request, source_id):
         cap.release()
 
     def generate_ffmpeg():
-    
-        print("Opening rtsp stream with ffmpeg...")
 
-        # Comando ffmpeg per catturare il flusso RTSP e convertirlo in MJPEG
+        print("Opening RTSP stream with FFmpeg...")
+
         command = [
-            'ffmpeg',  # Il programma ffmpeg
-            '-i', source.url,  # URL del flusso RTSP
-            '-f', 'mjpeg',  # Formato MJPEG
-            '-q:v', '5',  # Qualità del flusso MJPEG
-            '-r', '30',  # Frame rate (può essere regolato)
+            'ffmpeg',
+            '-i', source.url,
+            '-f', 'mjpeg',
+            '-q:v', '5',
+            '-r', '30',
+            '-loglevel', 'quiet',  # Suppress FFmpeg logs
             '-'
         ]
 
-        # Creazione di un processo subprocess che esegue ffmpeg
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        data = b""
 
         try:
             while True:
-                # Leggi un frame dalla stdout di ffmpeg
-                frame = process.stdout.read(1024)
-                if not frame:
+                # Read a chunk of data from FFmpeg's stdout
+                chunk = process.stdout.read(1024)
+                if not chunk:
                     break
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+                data += chunk
+
+                # Search for JPEG start and end markers
+                start = data.find(b'\xff\xd8')
+                end = data.find(b'\xff\xd9')
+                if start != -1 and end != -1 and end > start:
+                    # Extract the JPEG frame from the data buffer
+                    frame = data[start:end + 2]
+                    data = data[end + 2:]
+                    yield (
+                            b'--frame\r\n'
+                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n'
+                    )
         except Exception as e:
-            print(f"Errore durante il flusso: {e}")
+            print(f"Error during stream: {e}")
         finally:
             process.stdout.close()
+            process.stderr.close()
+            process.terminate()
+            process.wait()
 
     # Se il flusso è MJPG → OpenCV, se è RTSP → FFmpeg
     if source.source_type == "rtsp":
         return StreamingHttpResponse(generate_ffmpeg(), content_type='multipart/x-mixed-replace; boundary=frame')
     else:
         return StreamingHttpResponse(generate_opencv(), content_type='multipart/x-mixed-replace; boundary=frame')
-"""
 
 
 @csrf_exempt
