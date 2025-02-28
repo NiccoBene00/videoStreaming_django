@@ -214,7 +214,7 @@ def video_feed(request, source_id):
             process.terminate()
             process.wait()
 
-    # Se il flusso è MJPG → OpenCV, se è RTSP → FFmpeg
+    # MJPG → OpenCV, RTSP → FFmpeg
     if source.source_type == "rtsp":
         return StreamingHttpResponse(generate_ffmpeg(), content_type='multipart/x-mixed-replace; boundary=frame')
     else:
