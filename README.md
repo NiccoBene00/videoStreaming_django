@@ -1,7 +1,7 @@
 # Helpful Tips
 
 The application, developed with PyCharm, allows you to acquire live camera streams (mjpg, rtsp, mpd stream), enabling you to record these streams and send them to an external address. Once recording is finished, you have the option to perform an editing phase by adding a customizable watermark (font and color) in the lower right corner of the video.  
-The application was implemented using the OpenCV library and ffmpeg.
+The application was implemented using the OpenCV library and ffmpeg (for the installation see the guide at the end of the document).
 
 **Note:** For .mpd streams, only the streaming functionality has been implemented.
 
