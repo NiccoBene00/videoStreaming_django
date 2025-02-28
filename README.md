@@ -1,48 +1,46 @@
 # Helpful Tips
 
-L'applicazione, sviluppata con PyCharm, permette di acquisire flussi stream live di telecamere (mjpg, rtsp, mpd stream), dunque di effettuare una registrazione di questi e inviarla su un indirizzo esterno. A registrazione terminata si ha la possibilità di eseguire una fase di editing attraverso l'inclusione di un watermark di font e colore personalizzabile nell'angolo in basso a destra del video.
-L'applicazione è stata implementata attraverso l'utilizzo della librearia OpenCV e ffmpeg.
+The application, developed with PyCharm, allows you to acquire live camera streams (mjpg, rtsp, mpd stream), enabling you to record these streams and send them to an external address. Once recording is finished, you have the option to perform an editing phase by adding a customizable watermark (font and color) in the lower right corner of the video.  
+The application was implemented using the OpenCV library and ffmpeg.
 
-Osservazione: per i flussi .mpd è stata implementata la sola funzionalità di streaming.
+**Note:** For .mpd streams, only the streaming functionality has been implemented.
 
-## Accesso
+## Access
 
-Effettuare il login mediante user admin (username: `admin`, pw: `admin`).  
-Si troverà già una lista di flussi stream disponibili (mjpg). Ad ora non sono presenti flussi rtsp pubblici causa la difficoltà di ricerca dovuta a motivi di privacy e scadenza degli URL (tuttavia, una volta effettuato l'accesso, è sempre possibile aggiungerli qualora se ne disponesse). Viene fornita, alla fine di questo file, una procedure per creare uno stream rtsp in locale per testare la funzionalità dell'applicazione.
+Log in using the admin user (username: `admin`, pw: `admin`).  
+A list of available streams (mjpg) will already be provided. Currently, there are no public rtsp streams due to the difficulty in finding them because of privacy concerns and URL expiration (however, once logged in, you can add them if available). A procedure to create a local rtsp stream for testing the application's functionality is provided at the end of this file.
 
-L'applicazione offre la possibilità di creare nuovi account per inserire stream personali.
+The application also offers the possibility to create new accounts for adding personal streams.
 
 ## Recording
 
-La fase di recording è facilmente guidata dall'applicazione; consiglio solo di tentare di ricaricare lo stream quando non parte correttamente.  
-A registrazione terminata viene salvata una copia nella cartella `media/recordings/source_id.mp4` del progetto PyCharm.
+The recording phase is easily guided by the application; I only recommend trying to reload the stream if it does not start correctly.  
+Once recording is finished, a copy is saved in the `media/recordings/source_id.mp4` folder of the PyCharm project.
 
-Osservazione: per i flussi mjpg si usa OpenCV dunque il file della registrazione potrebbe avere una durata diversa del tempo di effettiva registrazione. Gli stream mjpg non sono infatti flussi continui di frame, dunque alcuni di questi potrebbero andare persi (delay di rete, ecc...). Nel terminale di PyCharm vengono comunque specificati i frame acquisiti per ogni registrazione. Per i flussi rtsp invece lo streaming è garantito attraverso l'utilizzo di ffmpeg (stream rtsp a bassa risoluzione potrebbere subire rallentamenti o scatti).
+**Note:** For mjpg streams, OpenCV is used, so the recording file may have a duration different from the actual recording time. Mjpg streams are not continuous frame streams, so some frames may be lost (network delay, etc.). The PyCharm terminal still displays the number of frames captured for each recording. For rtsp streams, streaming is ensured through ffmpeg (rtsp streams in low resolution might experience slowdowns or stutters).
 
 ## Editing
 
-La procedura di editing è graficamente guidata dall'app.  
-Viene salvata una copia in `media/recordings/` denominata `source_id_watermarked.mp4`.
+The editing procedure is graphically guided by the app.  
+A copy is saved in `media/recordings/` named `source_id_watermarked.mp4`.
 
 ## Sending
 
-Specificare nel form relativo un URL valido. Per testare la funzionalità, consiglio di creare un URL temporaneo su [Webhook.site](https://webhook.site/) e verificare l'upload della registrazione editata.  
-Attenzione: Webhook.site rifiuta l'upload di file troppo grandi senza permessi, quindi caricare registrazioni non troppo lunghe (in genere ordine di una dozzina di secondi al max).
+Enter a valid URL in the corresponding form. To test the functionality, I recommend creating a temporary URL on [Webhook.site](https://webhook.site/) and verifying the upload of the edited recording.  
+**Note:** Webhook.site rejects the upload of files that are too large without permission, so upload recordings that are not too long (generally around a dozen seconds at most).
 
--------------------------------------------------------------------------------------------------------
+---
 
-## Come creare un flusso rtsp continuo in locale
+## How to Create a Continuous Local rtsp Stream
 
-  1. Scaricare (se non si dispone già) [rtsp simple server](https://sourceforge.net/projects/rtspsimpleserver.mirror/). Estrarre i file dalla cartella dunque
-     eseguire su cmd `mediamtx.exe`.
+1. Download (if you don't already have it) [rtsp simple server](https://sourceforge.net/projects/rtspsimpleserver.mirror/). Extract the files from the folder, then run `mediamtx.exe` from the command prompt.
      
-  2. Scaricare (se non se ne dispone già) [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (spostarsi nella sezione "release builds" e cercare 
-     `ffmpeg-release-essentials.zip`). Aggiungere ffmpeg al path delle varibili di ambiente in modo che il comando sia sempre raggiungibile da terminale.
-     Scaricare/scegliere un file .mp4 per creare lo stream continuo rtsp.
-     Eseguire su una seconda window cmd `ffmpeg -re -stream_loop -1 -i "personal_path_videostream.mp4" -c:v copy -f rtsp rtsp://127.0.0.1:8554/stream`.
-     Attenzione: inserire il corretto numero della porta dove rstp simple server è in ascolto per flussi rstp (viene specificato quando si esegue nell prima             window cmd `mediamtx.exe`).
+2. Download (if you don't already have it) [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (navigate to the "release builds" section and look for `ffmpeg-release-essentials.zip`). Add ffmpeg to your system's environment variables path so that the command is always accessible from the terminal.  
+   Download/choose an .mp4 file to create the continuous rtsp stream.  
+   In a second command prompt window, run:  
+   `ffmpeg -re -stream_loop -1 -i "personal_path_videostream.mp4" -c:v copy -f rtsp rtsp://127.0.0.1:8554/stream`  
+   **Note:** Enter the correct port number where the rtsp simple server is listening for rtsp streams (this is specified when you run `mediamtx.exe` in the first command prompt window).
      
-  4. Testare lo stream su VLC, andando su `media` - `open network stream` - insert `rtsp://127.0.0.1:8554/stream`.
+4. Test the stream on VLC by going to `Media` → `Open Network Stream` and entering `rtsp://127.0.0.1:8554/stream`.
     
-  5. Testare il flusso sull'applicazione.
-
+5. Test the stream in the application.
