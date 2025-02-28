@@ -136,7 +136,6 @@ def record_stream(source_id, output_path, source_url, source_type, fps, width, h
 
         print(f"Recording terminated for {source_url} - Frames acquired: {frame_count}")
 
-
 # Initialize the recording, check source state and start a parallel tread for starting recording
 def start_recording(source_id):
     source = VideoSource.objects.get(id=source_id)  # retrieve source from db

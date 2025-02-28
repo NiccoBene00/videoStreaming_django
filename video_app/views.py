@@ -126,7 +126,6 @@ def video_feed(request, source_id):
     return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
 """
 
-
 # OpencCV for MJPEG and ffmpeg for RTSP
 def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
