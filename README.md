@@ -1,3 +1,11 @@
+---
+
+## Disclaimer
+
+This application has been designed solely for educational purposes. No malicious intent is hidden behind the code.
+
+----
+
 # Helpful Tips
 
 The application, developed with PyCharm, allows you to acquire live camera streams (mjpg, rtsp, mpd stream), enabling you to record these streams and send them to an external address. Once recording is finished, you have the option to perform an editing phase by adding a customizable watermark (font and color) in the lower right corner of the video.  
@@ -45,9 +53,3 @@ Enter a valid URL in the corresponding form. To test the functionality, I recomm
     
 5. Test the stream in the application.
 
-
----
-
-## Disclaimer
-
-This application has been designed solely for educational purposes. No malicious intent is hidden behind the code.
