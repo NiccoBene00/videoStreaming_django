@@ -1,10 +1,8 @@
----
 
 ## *Disclaimer*
 
 *This application has been designed solely for educational purposes. No malicious intent is hidden behind the code.*
 
-----
 
 # Helpful Tips
 
