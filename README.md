@@ -44,3 +44,10 @@ Enter a valid URL in the corresponding form. To test the functionality, I recomm
 4. Test the stream on VLC by going to `Media` → `Open Network Stream` and entering `rtsp://127.0.0.1:8554/stream`.
     
 5. Test the stream in the application.
+
+
+---
+
+## Disclaimer
+
+This application has been designed solely for educational purposes. No malicious intent is hidden behind the code.
