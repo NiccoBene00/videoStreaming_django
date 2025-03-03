@@ -14,7 +14,7 @@ The application was implemented using the OpenCV library and ffmpeg (for the ins
 ## Access
 
 Log in using the admin user (username: `admin`, pw: `admin`).  
-A list of available streams (mjpg) will already be provided. Currently, there are no public rtsp streams due to the difficulty in finding them because of privacy concerns and URL expiration (however, once logged in, you can add them if available). <u>A procedure to create a local rtsp stream for testing the application's functionality is provided at the end of this file</u>.
+A list of available streams (mjpg) will already be provided. Currently, there are no public rtsp streams due to the difficulty in finding them because of privacy concerns and URL expiration (however, once logged in, you can add them if available). <u> A procedure to create a local rtsp stream for testing the application's functionality is provided at the end of this file </u>.
 
 The application also offers the possibility to create new accounts for adding personal streams.
 
