@@ -62,85 +62,22 @@ def stream_view(request, source_id):
     return render(request, 'stream_view.html', {'source': source})
 
 
-"""
-def video_feed(request, source_id):
-    source = get_object_or_404(VideoSource, id=source_id)
-
-    def generate():
-        import cv2
-        cap = cv2.VideoCapture(source.url)
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            _, buffer = cv2.imencode('.jpg', frame)
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-
-        cap.release()
-
-    return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
-"""
-
-"""
-def video_feed(request, source_id):
-    source = get_object_or_404(VideoSource, id=source_id)
-
-    if source.source_type == 'mpd':
-        return JsonResponse({'mpd_url': source.url})  # MPEG-DASH has to be managed differently (external player)
-
-    def generate():
-        cap = cv2.VideoCapture(source.url)
-
-        # Set min buffer to avoid delays
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps <= 0 or fps > 120:
-            fps = 25.0  # Default MJPG
-        frame_delay = 1 / fps  # Delay between two frames
-        prev_time = time.time()
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print(f"[ERROR] Stream not available: {source.url}")
-                break
-
-            # Compress frame into JPEG format
-            _, buffer = cv2.imencode('.jpg', frame)
-
-            # Send frame to buffer
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-
-            # Synchronize frame rate
-            current_time = time.time()
-            time_diff = current_time - prev_time
-            if time_diff < frame_delay:
-                time.sleep(frame_delay - time_diff)  # Sleep to maintain frame rate
-            prev_time = time.time()  # Update the previous time
-
-        cap.release()
-
-    return StreamingHttpResponse(generate(), content_type='multipart/x-mixed-replace; boundary=frame')
-"""
-
 # OpencCV for MJPEG and ffmpeg for RTSP
 def video_feed(request, source_id):
     source = get_object_or_404(VideoSource, id=source_id)
 
-    print("source.source_type: ", source.source_type)
-
     if source.source_type == 'mpd':
-        return JsonResponse({'mpd_url': source.url})  # MPEG-DASH gestito separatamente
+        return JsonResponse({'mpd_url': source.url})  # MPEG-DASH managed differently (external player)
 
     def generate_opencv():
+
+        print("Opening stream with OpenCV...")
 
         cap = cv2.VideoCapture(source.url)
 
         # Set min buffer to avoid delays
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # this minimizes delay by limiting how many frames are preloaded
+        # before processing.
 
         fps = cap.get(cv2.CAP_PROP_FPS)
         if fps <= 0 or fps > 120:
@@ -155,13 +92,15 @@ def video_feed(request, source_id):
                 break
 
             # Compress frame into JPEG format
-            _, buffer = cv2.imencode('.jpg', frame)
+            _, buffer = cv2.imencode('.jpg', frame)  # imencode return a tuple, the first element (boolean) is ignored
 
             # Send frame to buffer
             yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')  # This format is commonly used to
+            # stream video frames to a web browser
 
-            # Synchronize frame rate
+            # Retrieves the current time and calculates the time difference (time_diff) since the last frame was
+            # processed. This helps determine if the function needs to wait to maintain the desired frame rate.
             current_time = time.time()
             time_diff = current_time - prev_time
             if time_diff < frame_delay:
@@ -177,15 +116,16 @@ def video_feed(request, source_id):
         command = [
             'ffmpeg',
             '-i', source.url,
-            '-f', 'mjpeg',
-            '-q:v', '5',
-            '-r', '30',
-            '-loglevel', 'quiet',  # Suppress FFmpeg logs
+            '-f', 'mjpeg',  # sets the output format to MJPEG (stream of JPEG images)
+            '-q:v', '5',  # standard video quality
+            '-r', '30',  # set the frame rate to 30 fps
+            '-loglevel', 'quiet',  # suppresses FFmpeg's log output to keep the console output clean
             '-'
         ]
 
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        data = b""
+        data = b""  # data is initialized as an empty byte string. This buffer will accumulate chunks of binary data
+        # read from FFmpeg’s stdout until a complete JPEG frame is detected.
 
         try:
             while True:
@@ -193,15 +133,23 @@ def video_feed(request, source_id):
                 chunk = process.stdout.read(1024)
                 if not chunk:
                     break
-                data += chunk
+                data += chunk  # This buffer accumulates raw binary data until a full JPEG frame is detected.
 
                 # Search for JPEG start and end markers
                 start = data.find(b'\xff\xd8')
                 end = data.find(b'\xff\xd9')
-                if start != -1 and end != -1 and end > start:
+
+                if start != -1 and end != -1 and end > start:  # check if both markers are found and the end marker is
+                    # after the start marker
                     # Extract the JPEG frame from the data buffer
-                    frame = data[start:end + 2]
+                    frame = data[start:end + 2]  # remember that the end marker is 2 bytes long
+
+                    #  After extracting the frame, the buffer is updated by removing the bytes corresponding to the
+                    #  extracted frame. This ensures that the next iteration works with any remaining data that might
+                    #  contain the beginning of a subsequent frame.
                     data = data[end + 2:]
+
+                    # The function yields the extracted frame formatted as a multipart HTTP response
                     yield (
                             b'--frame\r\n'
                             b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n'
@@ -214,7 +162,7 @@ def video_feed(request, source_id):
             process.terminate()
             process.wait()
 
-    # Se il flusso è MJPG → OpenCV, se è RTSP → FFmpeg
+    # MJPG → OpenCV, RTSP → FFmpeg
     if source.source_type == "rtsp":
         return StreamingHttpResponse(generate_ffmpeg(), content_type='multipart/x-mixed-replace; boundary=frame')
     else:
@@ -233,11 +181,8 @@ def start_recording_view(request, source_id):
 def stop_recording_view(request, source_id):
     if request.method == 'POST':
         stop_recording(source_id)
-
         filename = f'source_{source_id}.mp4'
-
         return JsonResponse({'success': True, 'filename': filename})
-
     return JsonResponse({'success': False})
 
 
@@ -253,6 +198,7 @@ def add_watermark_view(request, source_id):
             return JsonResponse({'success': False, 'error': 'Watermark text is empty'})
 
         add_watermark_and_save(source_id, text, color, font_size)
+
         return JsonResponse({'success': True})
     return JsonResponse({'success': False})
 
@@ -279,7 +225,7 @@ def validate_rtsp_stream(url):
     cap = cv2.VideoCapture(url)
 
     if cap.isOpened():
-        print("rtsp stream opened successfully")
+        print("RTSP stream is valid")
         cap.release()
         return True
     cap.release()
@@ -291,7 +237,6 @@ def validate_mjpg_stream(url):
         response = requests.get(url, stream=True, timeout=5)
         content_type = response.headers.get('Content-Type', '')
         if response.status_code == 200 and 'multipart/x-mixed-replace' in content_type:
-            print("response status:", response.status_code)
             return True
     except requests.RequestException:
         return False
@@ -357,7 +302,6 @@ def add_resource_view(request):
                     return JsonResponse({'success': False, 'error': 'Invalid RTSP stream'})
 
             elif source_type == 'mjpg' and not validate_mjpg_stream(url):
-                print("source type mjpg")
                 return JsonResponse({'success': False, 'error': 'Invalid MJPEG stream'})
 
             elif source_type == 'mpd' and not url.endswith('.mpd'):

@@ -18,6 +18,6 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('admin/', admin.site.urls), # url for the admin page
+    path('admin/', admin.site.urls),  # url for the admin page
     path('', include('video_app.urls')),  # link the video_app urls to the project
 ]

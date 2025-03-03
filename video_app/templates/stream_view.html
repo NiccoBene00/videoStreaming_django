@@ -5,17 +5,16 @@
     <title>{{ source.name }} - Stream Control</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'mainstyle.css' %}">
+
+    <!-- MPEG-DASH necessary scripts and links -->
     <!-- Video.js CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.0.4/video-js.min.css" rel="stylesheet">
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.3.0/video.min.js"></script>
 
     <!-- DASH.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.6.0/dash.all.min.js"></script>
-
     <!-- Video.js DASH Plugin -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-dash/2.11.0/videojs-dash.min.js"></script>
-
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -75,6 +74,7 @@
             opacity: 0.6;
         }
     </style>
+
 </head>
 <body>
 <header>
@@ -93,7 +93,7 @@
             </video>
 
         {% else %}
-            <!-- MJPG & RTSP stream -->
+            <!-- MJPEG & RTSP stream (handle as continuous sequence of images) -->
             <img id="video-stream" src="{% url 'video_feed' source.id %}" alt="Live Stream">
         {% endif %}
 
@@ -132,7 +132,9 @@
             <option value="2.5">Extra Large</option>
         </select>
 
-        <button type="submit" id="apply-watermark" class="control-bt">Apply Watermark</button>
+        <button type="submit" id="apply-watermark"
+                class="control-bt">Apply Watermark
+        </button>
 
         <div id="watermark-loading" class="loading-overlay" style="display:none;">
             <div class="spinner"></div>
@@ -282,12 +284,17 @@
         function (event) {
             event.preventDefault();
 
+            // Double verification: show a confirmation dialog before proceeding
+            if (!window.confirm("The watermark will be applied in the bottom-right corner.")) {
+                return;
+            }
+
             const form = this;
             const loadingOverlay = document.getElementById('watermark-loading');
             const inputText = document.getElementById('watermark_text');
             const inputColor = document.getElementById('watermark_color');
             const inputSize = document.getElementById('watermark_size');
-            const submitButton = document.getElementById('apply-watermark');
+            const submitButton = this;
 
             const formData = new FormData(form);
             loadingOverlay.style.display = 'flex';
