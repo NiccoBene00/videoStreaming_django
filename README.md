@@ -1,7 +1,12 @@
 
-## *Disclaimer*
+# *Disclaimer*
 
-*This application has been designed solely for educational purposes. No malicious intent is hidden behind the code.*
+*# Disclaimer
+
+This project is provided solely for educational and demonstrative purposes. It is intended to serve as a learning tool for acquiring, recording, and editing video streams. No malicious intent or functionality is hidden within this code.
+
+By using or modifying this software, you acknowledge that you are responsible for ensuring its use complies with all applicable laws and regulations. The developers and contributors of this project assume no liability for any misuse or damages arising from its implementation.
+*
 
 
 # Helpful Tips
