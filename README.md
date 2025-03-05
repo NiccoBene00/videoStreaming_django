@@ -47,8 +47,9 @@ Enter a valid URL in the corresponding form. To test the functionality, I recomm
 2. Download (if you don't already have it) [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (navigate to the "release builds" section and look for `ffmpeg-release-essentials.zip`). Add ffmpeg to your system's environment variables path so that the command is always accessible from the terminal.  
    Download/choose an .mp4 file to create the continuous rtsp stream.  
    In a second command prompt window, run:  
-   `ffmpeg -re -stream_loop -1 -i "personal_path_videostream.mp4" -c:v copy -f rtsp rtsp://127.0.0.1:8554/stream`  
-   **Note:** Enter the correct port number where the rtsp simple server is listening for rtsp streams (this is specified when you run `mediamtx.exe` in the first command prompt window).
+   `ffmpeg -re -stream_loop -1 -i "personal_path_videostream.mp4" -c:v copy -f rtsp rtsp://127.0.0.1:8554/stream`
+   
+   *Note:* Enter the correct port number where the rtsp simple server is listening for rtsp streams (this is specified when you run `mediamtx.exe` in the first command prompt window).
      
 4. Test the stream on VLC by going to `Media` → `Open Network Stream` and entering `rtsp://127.0.0.1:8554/stream`.
     
