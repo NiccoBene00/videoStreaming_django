@@ -11,7 +11,7 @@ By using or modifying this software, you acknowledge that you are responsible fo
 The django application, developed with PyCharm, allows you to acquire live camera streams (mjpg, rtsp, mpd stream), enabling you to record these streams and send them to an external address. Once recording is finished, you have the option to perform an editing phase by adding a customizable watermark (font and color) in the lower right corner of the video.  
 The application was implemented using the OpenCV library and ffmpeg (for the installation see the guide at the end of the document).
 
-**Note:** For .mpd streams, only the streaming functionality has been implemented.
+*Note:* For .mpd streams, only the streaming functionality has been implemented.
 
 ## Access
 
@@ -19,7 +19,7 @@ Log in using the admin user (username: `admin`, pw: `admin`).
 A list of available streams (mjpg) will already be provided. Currently, there are no public rtsp streams due to the difficulty in finding them because of privacy concerns and URL expiration (however, once logged in, you can add them if available). [<ins>A procedure to create a local rtsp stream for testing the application's functionality is provided at the end of this file.</ins>](#how-to-create-a-continuous-local-rtsp-stream)
 The application also offers the possibility to create new accounts for adding personal streams.
 
-**Note**: [list of some public ip cam streams](https://github.com/fury999io/public-ip-cams)
+*Note*: [list of some public ip cam streams](https://github.com/fury999io/public-ip-cams) (mostly mjpeg)
 
 ## Recording
 
