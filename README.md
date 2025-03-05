@@ -26,7 +26,7 @@ The application also offers the possibility to create new accounts for adding pe
 The recording phase is easily guided by the application; I only recommend trying to reload the stream if it does not start correctly.  
 Once recording is finished, a copy is saved in the `media/recordings/source_id.mp4` folder of the PyCharm project.
 
-**Note:** For mjpeg streams, OpenCV is used, so the recording file may have a duration different from the actual recording time. Mjpeg streams are not continuous frame streams, so some frames may be lost (network delay, etc.). The PyCharm terminal still displays the number of frames captured for each recording. For rtsp streams, streaming is ensured through ffmpeg (rtsp streams in low resolution might experience slowdowns or stutters).
+**Note:** For mjpeg streams, OpenCV is used, so the recording file may appear sped-up or out-of-sync with the original stream’s timing. This due to a mismatch between the original, possibly irregular timing of the MJPEG stream and the constant frame rate assumption made during recording. The PyCharm terminal still displays the number of frames captured for each recording. For rtsp streams, streaming is ensured through ffmpeg (rtsp streams in low resolution might experience slowdowns or stutters).
 
 ## Editing
 
