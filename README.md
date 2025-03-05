@@ -36,7 +36,8 @@ A copy is saved in `media/recordings/` named `source_id_watermarked.mp4`.
 ## Sending
 
 Enter a valid URL in the corresponding form. To test the functionality, I recommend creating a temporary URL on [Webhook.site](https://webhook.site/) and verifying the upload of the edited recording.  
-**Note:** Webhook.site rejects the upload of files that are too large without permission, so upload recordings that are not too long (generally around a dozen seconds at most).
+
+*Note:* Webhook.site rejects the upload of files that are too large without permission, so upload recordings that are not too long (generally around a dozen seconds at most).
 
 ---
 
