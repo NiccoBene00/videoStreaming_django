@@ -37,11 +37,6 @@
         {% endfor %}
     </div>
 
-
-    <div style="margin-top: 20px;">
-        <button class="source-bt refresh-bt" onclick="window.location.reload();">Refresh Sources</button>
-    </div>
-
     <button class="source-bt refresh-bt" id="add-resource-btn">Add Stream</button>
 
     <!-- Modal form initially hidden -->
@@ -78,11 +73,36 @@
     </div>
 
 
+    <button class="source-bt refresh-bt" id="remove-resource-btn">Remove Stream</button>
+
+    <div id="remove-resource-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Remove Stream Resource</h3>
+            <br>
+            <form id="remove-resource-form">
+                <label for="stream-name">Stream Name:</label>
+                <input type="text" id="stream-name-torem" name="name" required>
+                <br>
+                <button type="submit" class="control-bt">Remove</button>
+            </form>
+
+            <div id="remove-resource-feedback" class="feedback-message hidden"></div>
+
+            <!-- Spinner di caricamento -->
+            <div id="remove-resource-loading" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <p>Removing...</p>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <footer>&copy; 2025 Stream App</footer>
 
 <script>
+    // Add resource button managing
     const addResourceBtn = document.getElementById('add-resource-btn');
     const modal = document.getElementById('add-resource-modal');
     const closeModalBtn = document.querySelector('.close-btn');
@@ -151,6 +171,73 @@
                 feedback.textContent = `Unexpected error: ${error.message}`;
                 feedback.style.color = 'red';
                 feedback.classList.remove('hidden');
+            });
+    });
+
+    // Remove resource button managing
+    const removeResourceBtn = document.getElementById('remove-resource-btn');
+    const removeModal = document.getElementById('remove-resource-modal');
+    const removeCloseBtn = removeModal.querySelector('.close-btn');
+    const removeForm = document.getElementById('remove-resource-form');
+    const removeFeedback = document.getElementById('remove-resource-feedback');
+    const removeLoadingOverlay = document.getElementById('remove-resource-loading');
+
+    // Show the remove modal when the remove button is clicked
+    removeResourceBtn.addEventListener('click', () => {
+        removeModal.classList.remove('hidden');
+        removeFeedback.classList.add('hidden');
+        removeLoadingOverlay.classList.add('hidden');
+        removeForm.reset();
+    });
+
+    // Close the remove modal when the close button is clicked
+    removeCloseBtn.addEventListener('click', () => {
+        removeModal.classList.add('hidden');
+    });
+
+    // Manage form submission through AJAX
+    removeForm.addEventListener('submit', function (e) {
+        e.preventDefault();  // prevent page reload
+
+        const name = document.getElementById('stream-name-torem').value.trim();
+
+        removeFeedback.classList.add('hidden');
+        removeLoadingOverlay.classList.remove('hidden');
+
+        // Sending the request via AJAX
+        fetch("{% url 'remove_resource' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({name})
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                removeLoadingOverlay.classList.add('hidden');
+
+                if (data.success) {
+                    removeFeedback.textContent = 'Resource removed successfully!';
+                    removeFeedback.style.color = 'green';
+                    removeFeedback.classList.remove('hidden');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    removeFeedback.textContent = 'Error: ' + data.error;
+                    removeFeedback.style.color = 'red';
+                    removeFeedback.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                removeLoadingOverlay.classList.add('hidden');
+                removeFeedback.textContent = `Unexpected error: ${error.message}`;
+                removeFeedback.style.color = 'red';
+                removeFeedback.classList.remove('hidden');
             });
     });
 

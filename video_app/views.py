@@ -166,6 +166,8 @@ def video_feed(request, source_id):
     if source.source_type == "rtsp":
         return StreamingHttpResponse(generate_ffmpeg(), content_type='multipart/x-mixed-replace; boundary=frame')
     else:
+        # Since MJPEG streams provide a sequence of JPEG images, OpenCV can efficiently decode and handle these images
+        # for real-time analysis and display.
         return StreamingHttpResponse(generate_opencv(), content_type='multipart/x-mixed-replace; boundary=frame')
 
 
@@ -318,6 +320,39 @@ def add_resource_view(request):
                 source_type=source_type
             )
 
+            return JsonResponse({'success': True})
+
+        except Exception as e:
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+def remove_resource_view(request):
+    if request.method == 'POST':
+        try:
+            # Parse the JSON payload from the request body
+            try:
+                data = json.loads(request.body.decode('utf-8'))
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'error': 'JSON data not valid'})
+
+            # Get the stream name from the data and perform basic validation
+            name = data.get('name', '').strip()
+            print("stream name:", name)
+            if not name:
+                return JsonResponse({'success': False, 'error': 'Stream name is required'})
+
+            # Verify that a VideoSource with the given name exists for the current user
+            try:
+                video_source = VideoSource.objects.get(user=request.user, name=name)
+            except VideoSource.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Stream resource not found. Remember that the system is'
+                                                                ' case sensitive.'})
+
+            # Delete the resource and return a success message
+            video_source.delete()
             return JsonResponse({'success': True})
 
         except Exception as e:
