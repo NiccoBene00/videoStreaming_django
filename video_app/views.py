@@ -340,7 +340,7 @@ def remove_resource_view(request):
 
             # Get the stream name from the data and perform basic validation
             name = data.get('name', '').strip()
-            print("stream name:", name)
+
             if not name:
                 return JsonResponse({'success': False, 'error': 'Stream name is required'})
 
