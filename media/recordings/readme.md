@@ -1,3 +1,3 @@
 FOLDER `media/recordings`
 
-Dentro questa cartella vengono memorizzate copie delle registrazioni con e senza editing.
+Here will be stored recording copies (with and without markdown).
